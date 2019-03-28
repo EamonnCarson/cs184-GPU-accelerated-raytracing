@@ -133,6 +133,14 @@ struct BBox {
    * \param c color of the wireframe
    */
   void draw(Color c, float) const;
+
+  /**
+   * Compute the volume of the bounding box.
+   */
+  double volume() const {
+    if (empty()) return 0.0;
+    return extent.x * extent.y * extent.z;
+  }
 };
 
 std::ostream& operator<<(std::ostream& os, const BBox& b);

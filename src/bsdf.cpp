@@ -37,8 +37,9 @@ Spectrum MirrorBSDF::f(const Vector3D& wo, const Vector3D& wi) {
 Spectrum MirrorBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) {
   // TODO: 1.2
   // Using BSDF::reflect(), implement sample_f for a mirror surface
-
-  return Spectrum();
+  *pdf = 1.f;
+  reflect(wo, wi);
+  return reflectance / abs_cos_theta(*wi);
 }
 
 // Microfacet BSDF //
@@ -51,23 +52,36 @@ double MicrofacetBSDF::D(const Vector3D& h) {
   // TODO: 2.2
   // Compute Beckmann normal distribution function (NDF) here.
   // You will need the roughness alpha.
-
-  return std::pow(cos_theta(h), 100.0);;
+  float theta_h = getTheta(h);
+  return expf(-powf(tanf(theta_h), 2) / (alpha * alpha))
+      / (PI * alpha * alpha * powf(cosf(theta_h), 4));
 }
 
 Spectrum MicrofacetBSDF::F(const Vector3D& wi) {
   // TODO: 2.3
   // Compute Fresnel term for reflection on dielectric-conductor interface.
   // You will need both eta and etaK, both of which are Spectrum.
-
-  return Spectrum();
+  Spectrum n2_k2 = (eta * eta + k * k);
+  Spectrum ncos_2 = 2 * eta * fabs(wi.z);
+  float cos2 = wi.z * wi.z;
+  Spectrum r_s  = (n2_k2 - ncos_2 + cos2)
+                  / (n2_k2 + ncos_2 + cos2);
+  Spectrum r_p = (n2_k2 * cos2 - ncos_2 + 1)
+                 / (n2_k2 * cos2 + ncos_2 + 1);
+  return (r_s + r_p) / 2.f;
 }
 
 Spectrum MicrofacetBSDF::f(const Vector3D& wo, const Vector3D& wi) {
   // TODO: 2.1
   // Implement microfacet model here
 
-  return Spectrum();
+  if (!(wo.z > 0 && wi.z > 0)) {
+    return Spectrum();
+  }
+  Vector3D h = wo + wi;
+  h.normalize();
+  static const Vector3D n = {0, 0, 1};
+  return (F(wi) * G(wo, wi) * D(h)) / (4 * dot(n, wo) * dot(n, wi));
 }
 
 Spectrum MicrofacetBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) {
@@ -75,9 +89,25 @@ Spectrum MicrofacetBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) 
   // *Importance* sample Beckmann normal distribution function (NDF) here.
   // Note: You should fill in the sampled direction *wi and the corresponding *pdf,
   //       and return the sampled BRDF value.
+  // *wi = cosineHemisphereSampler.get_sample(pdf); //placeholder
+  // return MicrofacetBSDF::f(wo, *wi);
 
-  *wi = cosineHemisphereSampler.get_sample(pdf); //placeholder
-  return MicrofacetBSDF::f(wo, *wi);
+  Vector2D r = sampler.get_sample();
+  float theta = atanf(sqrtf(-(alpha * alpha) * logf(1 - r[0])));
+  float phi = 2 * PI * r[1];
+  Vector3D h = {cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta)};
+  *wi = -wo + 2 * dot(wo, h) * h;
+  if (wi->z <= 0) {
+    *pdf = 0;
+    return Spectrum();
+  }
+
+  float p_theta = (2 * sinf(theta)) / (alpha * alpha * powf(cosf(theta), 3))
+                  * expf(-powf(tanf(theta), 2) / (alpha * alpha));
+  float p_phi = 1 / (2 * PI);
+  float p_h = p_theta * p_phi / sinf(theta);
+  *pdf = p_h / (4 * dot(*wi, h));
+  return f(wo, *wi);
 }
 
 // Refraction BSDF //
@@ -100,7 +130,23 @@ Spectrum GlassBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) {
 
   // TODO: 1.4
   // Compute Fresnel coefficient and either reflect or refract based on it.
-
+  if (!refract(wo, wi, ior)) {
+    reflect(wo, wi);
+    *pdf = 1.f;
+    return reflectance / abs_cos_theta(*wi);
+  } else {
+    float r0 = powf((1 - ior) / (1 + ior), 2);
+    float r = r0 + (1.f - r0) * powf(1 - fabs(wo.z), 5);
+    if (coin_flip(r)) {
+      reflect(wo, wi);
+      *pdf = 1.f;
+      return r * reflectance / abs_cos_theta(*wi);
+    } else {
+      *pdf = 1.f - r;
+      float eta = wo.z < 0 ? ior : 1.f / ior;
+      return (1 - r) * transmittance / abs_cos_theta(*wi) / (eta * eta);
+    }
+  }
   return Spectrum();
 }
 
@@ -108,8 +154,7 @@ void BSDF::reflect(const Vector3D& wo, Vector3D* wi) {
 
   // TODO: 1.1
   // Implement reflection of wo about normal (0,0,1) and store result in wi.
-
-
+  *wi = {-wo.x, -wo.y, wo.z};
 }
 
 bool BSDF::refract(const Vector3D& wo, Vector3D* wi, float ior) {
@@ -120,6 +165,21 @@ bool BSDF::refract(const Vector3D& wo, Vector3D* wi, float ior) {
   // and true otherwise. When dot(wo,n) is positive, then wo corresponds to a
   // ray entering the surface through vacuum.
 
+  float eta;
+  int z_mult;
+  if (wo.z < 0) { // exiting
+    z_mult = 1;
+    eta = ior;
+  } else { // entering
+    z_mult = -1;
+    eta = 1.f / ior;
+  }
+
+  float z_sq = 1 - (eta * eta) * (1 - (wo.z * wo.z));
+  if (z_sq < 0) {
+    return false; // Total internal reflection
+  }
+  *wi = {-eta * wo.x, -eta  * wo.y, z_mult * sqrtf(z_sq)};
   return true;
 }
 
