@@ -207,6 +207,10 @@ struct HDRImageBuffer {
    */
   void clear() { memset(&data[0], 0, w * h * sizeof(Spectrum)); }
 
+  const Spectrum& at(size_t x, size_t y) const {
+    return data[x + y * w];
+  }
+
   size_t w; ///< width
   size_t h; ///< height
   std::vector<Spectrum> data; ///< pixel buffer

@@ -163,7 +163,7 @@ namespace CGL {
     // This changes if you implement hemispherical lighting for extra credit.
 
     if (!bvh->intersect(r, &isect))
-      return L_out;
+      return envLight ? envLight->sample_dir(r) : L_out;
 
     // This line returns a color depending only on the normal vector
     // to the surface at the intersection point.
@@ -202,8 +202,13 @@ namespace CGL {
         if (max_samples == 1) {
           sample_offset = {0.5, 0.5};
         }
-        Ray r = camera->generate_ray((origin.x + sample_offset.x) / sampleBuffer.w,
-                                     (origin.y + sample_offset.y) / sampleBuffer.h);
+        Vector2D lensSample = gridSampler->get_sample();
+        // Ray r = camera->generate_ray((origin.x + sample_offset.x) / sampleBuffer.w,
+        //                              (origin.y + sample_offset.y) / sampleBuffer.h);
+        Ray r = camera->generate_ray_for_thin_lens((origin.x + sample_offset.x) / sampleBuffer.w,
+                                                   (origin.y + sample_offset.y) / sampleBuffer.h,
+                                                   lensSample[0],
+                                                   lensSample[1] * 2.0 * PI);
         r.depth = max_ray_depth;
         Spectrum sample = est_radiance_global_illumination(r);
         total += sample;
