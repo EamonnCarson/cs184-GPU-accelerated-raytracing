@@ -113,21 +113,44 @@ link_directories(
 )
 
 #-------------------------------------------------------------------------------
+# OpenCL kernel syntax checking
+#-------------------------------------------------------------------------------
+set(OPENCL_KERNEL_SOURCE
+  kernel/test.cl
+  kernel/test2.cl
+  )
+
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../kernel")
+
+FOREACH(KERNEL ${OPENCL_KERNEL_SOURCE})
+  string(REGEX REPLACE "\\.cl" ".ll" KERNEL_IR ${KERNEL})
+  set(KERNEL_IR "${CMAKE_CURRENT_BINARY_DIR}/../${KERNEL_IR}")
+  list(APPEND OPENCL_KERNEL_IR ${KERNEL_IR})
+  add_custom_command(OUTPUT ${KERNEL_IR}
+    COMMAND clang-8 -S -emit-llvm -Xclang -finclude-default-header -cl-std=CL1.2 -o ${KERNEL_IR} "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
+    MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
+    COMMENT "Checking ${KERNEL}"
+    )
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}" "${CMAKE_CURRENT_BINARY_DIR}/../${KERNEL}" COPYONLY)
+ENDFOREACH()
+
+#-------------------------------------------------------------------------------
 # Add executable
 #-------------------------------------------------------------------------------
-add_executable(pathtracer ${APPLICATION_SOURCE})
+add_executable(pathtracer ${APPLICATION_SOURCE} ${OPENCL_KERNEL_IR})
 if (WIN32)
-    target_compile_definitions( pathtracer PUBLIC -DNNG_STATIC_LIB)
+  target_compile_definitions( pathtracer PUBLIC -DNNG_STATIC_LIB)
 endif(WIN32)
 
 target_link_libraries( pathtracer
-    CGL ${CGL_LIBRARIES}
-    glew ${GLEW_LIBRARIES}
-    glfw ${GLFW_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-    ${FREETYPE_LIBRARIES}
-    ${CMAKE_THREADS_INIT}
-)
+  CGL ${CGL_LIBRARIES}
+  glew ${GLEW_LIBRARIES}
+  glfw ${GLFW_LIBRARIES}
+  ${OPENGL_LIBRARIES}
+  ${FREETYPE_LIBRARIES}
+  ${CMAKE_THREADS_INIT}
+  OpenCL::OpenCL
+  )
 
 #-------------------------------------------------------------------------------
 # Platform-specific 3-1 starter library
