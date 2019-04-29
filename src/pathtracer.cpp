@@ -80,6 +80,7 @@ PathTracer::PathTracer(size_t ns_aa,
   tm_key = 0.18;
   tm_wht = 5.0f;
 
+  init_open_cl(CL_DEVICE_TYPE_GPU);
 }
 
 PathTracer::~PathTracer() {
@@ -88,6 +89,67 @@ PathTracer::~PathTracer() {
   delete gridSampler;
   delete hemisphereSampler;
 
+}
+
+void PathTracer::init_open_cl(cl_device_type device_type) {
+  // TODO(PenguinToast): Do proper error handling (throw an exception)
+  std::vector<cl::Platform> platforms;
+  cl::Platform::get(&platforms);
+  if (platforms.empty()) {
+    fprintf(stderr, "[PathTracer] No OpenCL platforms availabile\n");
+    throw 1;
+  }
+  bool foundDevice = false;
+  cl::Device device;
+  for (auto &p : platforms) {
+    std::vector<cl::Device> devices;
+    p.getDevices(device_type, &devices);
+    if (devices.empty()) {
+      continue;
+    }
+    device = devices[0];
+    foundDevice = true;
+    fprintf(stdout, "[PathTracer] Set OpenCL platform to %s\n",
+            p.getInfo<CL_PLATFORM_NAME>().c_str());
+  }
+  if (!foundDevice) {
+    fprintf(stderr, "[PathTracer] Requested device not found\n");
+    throw 1;
+  }
+
+  // Create kernel program
+  FILE *kernelFile = fopen("kernel/pathtrace_pixel.cl", "r");
+  if (kernelFile == NULL) {
+    fprintf(stderr, "[PathTracer] Can't open kernel code\n");
+    throw 1;
+  }
+  fseek(kernelFile, 0, SEEK_END);
+  size_t kernelLength = ftell(kernelFile);
+  fseek(kernelFile, 0, SEEK_SET);
+  char *kernelSrc = (char *) malloc(kernelLength + 1);
+  if (fread(kernelSrc, 1, kernelLength, kernelFile) != kernelLength) {
+    fprintf(stderr, "[PathTracer] Failed to read kernel code\n");
+    throw 1;
+  }
+  kernelSrc[kernelLength] = '\0';
+  fclose(kernelFile);
+
+  clContext = cl::Context(device);
+  cl::Program pathtracePixelProgram = cl::Program(clContext, kernelSrc);
+  try {
+    pathtracePixelProgram.build("-cl-std=CL1.2");
+  } catch (...) {
+    // Print build info for all devices
+    cl_int buildErr = CL_SUCCESS;
+    auto buildInfo = pathtracePixelProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device, &buildErr);
+    for (auto &pair : buildInfo) {
+      cerr << pair << endl << endl;
+    }
+    throw 1;
+  }
+  cout << "[PathTracer] Built OpenCL Kernel" << endl;
+
+  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtracePixel");
 }
 
 void PathTracer::set_scene(Scene *scene) {
@@ -124,7 +186,7 @@ void PathTracer::set_camera(Camera *camera) {
 
   this->camera->lensRadius = lensRadius;
   this->camera->focalDistance = focalDistance;
-  
+
   if (has_valid_configuration()) {
     state = READY;
   }
@@ -137,7 +199,7 @@ void PathTracer::set_frame_size(size_t width, size_t height) {
   }
   sampleBuffer.resize(width, height);
   frameBuffer.resize(width, height);
-  cell_tl = Vector2D(0,0); 
+  cell_tl = Vector2D(0,0);
   cell_br = Vector2D(width, height);
   render_cell = false;
   sampleCountBuffer.resize(width * height);
@@ -265,7 +327,7 @@ void PathTracer::start_raytracing() {
     // populate the tile work queue
     for (size_t y = cell_tl.y; y < cell_br.y; y += imTS) {
       for (size_t x = cell_tl.x; x < cell_br.x; x += imTS) {
-        workQueue.put_work(WorkItem(x, y, 
+        workQueue.put_work(WorkItem(x, y,
           min(imTS, (int)(cell_br.x-x)), min(imTS, (int)(cell_br.y-y)) ));
       }
     }
@@ -273,10 +335,45 @@ void PathTracer::start_raytracing() {
 
   bvh->total_isects = 0; bvh->total_rays = 0;
   // launch threads
-  fprintf(stdout, "[PathTracer] Rendering... "); fflush(stdout);
-  for (int i=0; i<numWorkerThreads; i++) {
-      workerThreads[i] = new std::thread(&PathTracer::worker_thread, this);
+  fprintf(stdout, "[PathTracer] Rendering...\n"); fflush(stdout);
+  // for (int i=0; i<numWorkerThreads; i++) {
+  //     workerThreads[i] = new std::thread(&PathTracer::worker_thread, this);
+  // }
+
+  cl::CommandQueue commandQueue(clContext);
+
+  // Memory allocations
+  vector<cl_float4> output(sampleBuffer.w * sampleBuffer.h, cl_float4());
+  cl::Event ev;
+  cl::Buffer outputBuffer(clContext, begin(output), end(output), false);
+  cl_ulong2 dim = {sampleBuffer.w, sampleBuffer.h};
+  pathtracePixel.setArg(0, outputBuffer);
+  pathtracePixel.setArg(1, dim);
+  int err = commandQueue.enqueueNDRangeKernel(pathtracePixel,
+                                              cl::NullRange,
+                                              cl::NDRange(sampleBuffer.w, sampleBuffer.h),
+                                              cl::NDRange(1, 1),
+                                              NULL,
+                                              &ev);
+  if (err != 0) {
+    cout << "[Pathtracer] Error queueing kernel: " << err << endl;
+    throw 1;
   }
+  cout << "[PathTracer] Queued kernel" << endl;
+  ev.wait();
+  cout << "[PathTracer] Kernel finished" << endl;
+  err = cl::copy(commandQueue, outputBuffer, begin(output), end(output));
+  if (err != 0) {
+    cout << "[Pathtracer] Error reading output buffer: " << err << endl;
+    throw 1;
+  }
+  for (int y = 0; y < sampleBuffer.h; y++) {
+    for (int x = 0; x < sampleBuffer.w; x++) {
+      cl_float4 color = output[y * sampleBuffer.w + x];
+      sampleBuffer.update_pixel(Spectrum(color.s0, color.s1, color.s2), x, y);
+    }
+  }
+  sampleBuffer.toColor(frameBuffer, 0, 0, sampleBuffer.w, sampleBuffer.h);
 }
 
 void PathTracer::render_to_file(string filename, size_t x, size_t y, size_t dx, size_t dy) {
@@ -314,7 +411,7 @@ void PathTracer::build_accel() {
   fprintf(stdout, "Done! (%.4f sec)\n", timer.duration());
 
   // build BVH //
-  fprintf(stdout, "[PathTracer] Building BVH from %lu primitives... ", primitives.size()); 
+  fprintf(stdout, "[PathTracer] Building BVH from %lu primitives... ", primitives.size());
   fflush(stdout);
   timer.start();
   bvh = new BVHAccel(primitives);
@@ -608,7 +705,7 @@ void PathTracer::worker_thread() {
   WorkItem work;
   while (continueRaytracing && workQueue.try_get_work(&work)) {
     raytrace_tile(work.tile_x, work.tile_y, work.tile_w, work.tile_h);
-    { 
+    {
       lock_guard<std::mutex> lk(m_done);
       ++tilesDone;
       if (!render_silent)  cout << "\r[PathTracer] Rendering... " << int((double)tilesDone/tilesTotal * 100) << '%';

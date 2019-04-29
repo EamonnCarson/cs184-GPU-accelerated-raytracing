@@ -1,6 +1,9 @@
 #ifndef CGL_RAYTRACER_H
 #define CGL_RAYTRACER_H
 
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+
 #include <stack>
 #include <thread>
 #include <atomic>
@@ -8,6 +11,8 @@
 #include <condition_variable>
 #include <vector>
 #include <algorithm>
+
+#include <CL/cl.hpp>
 
 #include "CGL/timer.h"
 
@@ -168,6 +173,7 @@ class PathTracer {
    * Used in initialization.
    */
   bool has_valid_configuration();
+  void init_open_cl(cl_device_type device_type);
 
   /**
    * Build acceleration structures.
@@ -300,7 +306,9 @@ class PathTracer {
   std::string filename;
 
   double lensRadius, focalDistance;
-
+  cl::Context clContext;
+  cl::Kernel pathtracePixel;
+  // cl::CommandQueue commandQueue;
 };
 
 }  // namespace CGL
