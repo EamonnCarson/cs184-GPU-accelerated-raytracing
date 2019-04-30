@@ -195,5 +195,44 @@ bool BVHAccel::intersect(const Ray& ray, Intersection* i, BVHNode *node) const {
   return intersects;
 }
 
+size_t BVHNode::kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
+                              std::vector<kernel_primitive_t>& kernel_primitives,
+                              size_t exit_index) const {
+  size_t my_index = kernel_bvh.size();
+  kernel_bvh.emplace_back();
+  kernel_bvh_node_t node;
+
+  // Initialize stuff to 0's
+  node.entry_index = 0;
+  node.prim_count = 0;
+  node.prim_index = 0;
+
+  node.exit_index = exit_index;
+  node.bounds[0] = cglVectorToKernel(bb.min);
+  node.bounds[1] = cglVectorToKernel(bb.max);
+  if (isLeaf()) {
+    node.entry_index = exit_index;
+    node.prim_count = prims->size();
+    node.prim_index = kernel_primitives.size();
+    for (auto prim : *prims) {
+      kernel_primitive_t kernel_prim;
+      prim->kernel_struct(&kernel_prim);
+      kernel_primitives.push_back(kernel_prim);
+    }
+  } else {
+    // Push right side first
+    size_t right_index = r->kernel_struct(kernel_bvh, kernel_primitives, exit_index);
+    node.entry_index = l->kernel_struct(kernel_bvh, kernel_primitives, right_index);
+  }
+
+  kernel_bvh[my_index] = node;
+  return my_index;
+}
+
+void BVHAccel::kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
+                             std::vector<kernel_primitive_t>& kernel_primitives) const {
+  root->kernel_struct(kernel_bvh, kernel_primitives, 0);
+}
+
 }  // namespace StaticScene
 }  // namespace CGL

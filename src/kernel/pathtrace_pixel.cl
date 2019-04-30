@@ -1,12 +1,11 @@
 /* Structures that are shared between host/device */
 
 typedef struct __attribute__ ((packed)) bvh_node {
-  float3 min;
-  float3 max;
-  uint prim_offset;
+  float3 bounds[2];
+  uint prim_index;
   uint prim_count;
-  uint left_offset;
-  uint right_offset;
+  uint entry_index; // Index of node to jump to on intersection success
+  uint exit_index; // Index of node to jump to on intersection failure
 } bvh_node_t;
 
 #define PRIMITIVE_TYPE_SPHERE 0
@@ -152,6 +151,73 @@ bool intersect_primitive(ray_t *ray,
   }
 }
 
+bool intersect_bvh_bbox(ray_t *ray,
+                        global bvh_node_t *bvh_node,
+                        float *t0,
+                        float *t1) {
+    float tmin, tmax, tymin, tymax, tzmin, tzmax;
+    bool xsign = ray->d.x < 0;
+    bool ysign = ray->d.y < 0;
+    bool zsign = ray->d.z < 0;
+
+    tmin = (bvh_node->bounds[xsign].x - ray->o.x) / ray->d.x;
+    tmax = (bvh_node->bounds[1-xsign].x - ray->o.x) / ray->d.x;
+    tymin = (bvh_node->bounds[ysign].y - ray->o.y) / ray->d.y;
+    tymax = (bvh_node->bounds[1-ysign].y - ray->o.y) / ray->d.y;
+
+    if ((tmin > tymax) || (tymin > tmax))
+        return false;
+    if (tymin > tmin)
+        tmin = tymin;
+    if (tymax < tmax)
+        tmax = tymax;
+
+    tzmin = (bvh_node->bounds[zsign].z - ray->o.z) / ray->d.z;
+    tzmax = (bvh_node->bounds[1-zsign].z - ray->o.z) / ray->d.z;
+
+    if ((tmin > tzmax) || (tzmin > tmax))
+        return false;
+    if (tzmin > tmin)
+        tmin = tzmin;
+    if (tzmax < tmax)
+        tmax = tzmax;
+
+    *t0 = tmin;
+    *t1 = tmax;
+    return true;
+}
+
+/** Intersection test for a flattened BVH */
+bool intersect_bvh(ray_t *ray,
+                   global bvh_node_t *bvh,
+                   global primitive_t *primitives,
+                   intersection_t *isect) {
+  float t0, t1;
+  bool intersects = false;
+  uint next_node_index = 0;
+  do {
+    global bvh_node_t *curr_node = &bvh[next_node_index];
+
+    if (!intersect_bvh_bbox(ray, curr_node, &t0, &t1)
+        || t0 > ray->max_t
+        || t1 < ray->min_t) {
+      next_node_index = curr_node->exit_index;
+    } else {
+      if (curr_node->prim_count > 0) { // Leaf node
+        for (uint i = curr_node->prim_index;
+             i < curr_node->prim_index + curr_node->prim_count;
+             i++) {
+          intersects = intersect_primitive(ray, &primitives[i], isect)
+                       || intersects;
+        }
+        // For leaf nodes, entry_index == exit_index
+      }
+      next_node_index = curr_node->entry_index;
+    }
+  } while (next_node_index != 0);
+  return intersects;
+}
+
 /* Path tracing functions */
 
 void generate_ray(camera_t *camera, float cx, float cy, ray_t *output) {
@@ -166,13 +232,10 @@ void generate_ray(camera_t *camera, float cx, float cy, ray_t *output) {
 }
 
 float3 est_radiance_global_illumination(ray_t *ray,
-                                        global primitive_t *primitives,
-                                        uint num_primitives) {
+                                        global bvh_node_t *bvh,
+                                        global primitive_t *primitives) {
   intersection_t isect;
-  bool intersected = false;
-  for (uint i = 0; i < num_primitives; i++) {
-    intersected = intersect_primitive(ray, &primitives[i], &isect) || intersected;
-  }
+  bool intersected = intersect_bvh(ray, bvh, primitives, &isect);
   if (intersected) {
     return (isect.n * 0.5f) + (float3)(0.5f, 0.5f, 0.5f);
   }
@@ -184,8 +247,8 @@ pathtrace_pixel(global float4 *output_image,
                 uint2 dimensions,
                 uint num_samples,
                 camera_t camera,
-                global primitive_t *primitives,
-                uint num_primitives)
+                global bvh_node_t *bvh,
+                global primitive_t *primitives)
 {
   uint seed = get_global_id(1) * get_global_size(0) + get_global_id(0);
   uint x = get_global_id(0);
@@ -210,7 +273,7 @@ pathtrace_pixel(global float4 *output_image,
                    (y + rand(&seed)) / dimensions.y,
                    &ray);
     }
-    total += est_radiance_global_illumination(&ray, primitives, num_primitives);
+    total += est_radiance_global_illumination(&ray, bvh, primitives);
   }
   output_image[y * dimensions.x + x] = (float4)(total / num_samples, 1);
 }

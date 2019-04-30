@@ -120,26 +120,11 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
   }
 
   // Create kernel program
-  FILE *kernelFile = fopen("kernel/pathtrace_pixel.cl", "r");
-  if (kernelFile == NULL) {
-    fprintf(stderr, "[PathTracer] Can't open kernel code\n");
-    throw 1;
-  }
-  fseek(kernelFile, 0, SEEK_END);
-  size_t kernelLength = ftell(kernelFile);
-  fseek(kernelFile, 0, SEEK_SET);
-  char *kernelSrc = (char *) malloc(kernelLength + 1);
-  if (fread(kernelSrc, 1, kernelLength, kernelFile) != kernelLength) {
-    fprintf(stderr, "[PathTracer] Failed to read kernel code\n");
-    throw 1;
-  }
-  kernelSrc[kernelLength] = '\0';
-  fclose(kernelFile);
-
+  const char* src = "#include \"kernel/pathtrace_pixel.cl\"";
   clContext = cl::Context(device);
-  cl::Program pathtracePixelProgram = cl::Program(clContext, kernelSrc);
+  cl::Program pathtracePixelProgram = cl::Program(clContext, src);
   try {
-    pathtracePixelProgram.build("-cl-std=CL1.2");
+    pathtracePixelProgram.build("-I. -cl-std=CL1.2");
   } catch (...) {
     // Print build info for all devices
     cl_int buildErr = CL_SUCCESS;
@@ -353,27 +338,22 @@ void PathTracer::start_raytracing() {
   kernel_camera_t camera_arg;
   camera->kernel_struct(&camera_arg);
 
-  // Build kernel primitives array
+  // Build kernel bvh/primitives array
+  vector<kernel_bvh_node_t> kernelBVH;
   vector<kernel_primitive_t> kernelPrimitives;
-  for (SceneObject *obj : scene->objects) {
-    const vector<Primitive *> &obj_prims = obj->get_primitives();
-    for (auto &prim : obj_prims) {
-      kernel_primitive_t kernel_prim;
-      prim->kernel_struct(&kernel_prim);
-      kernelPrimitives.push_back(kernel_prim);
-    }
-  }
+  bvh->kernel_struct(kernelBVH, kernelPrimitives);
 
   // Memory allocations
   cl::Buffer outputBuffer(clContext, begin(output), end(output), false);
+  cl::Buffer bvhBuffer(clContext, begin(kernelBVH), end(kernelBVH), true);
   cl::Buffer primitivesBuffer(clContext, begin(kernelPrimitives), end(kernelPrimitives), true);
 
   pathtracePixel.setArg(0, outputBuffer);
   pathtracePixel.setArg(1, dim);
   pathtracePixel.setArg(2, (cl_uint) ns_aa);
   pathtracePixel.setArg(3, camera_arg);
-  pathtracePixel.setArg(4, primitivesBuffer);
-  pathtracePixel.setArg(5, (cl_uint) kernelPrimitives.size());
+  pathtracePixel.setArg(4, bvhBuffer);
+  pathtracePixel.setArg(5, primitivesBuffer);
   int err = commandQueue.enqueueNDRangeKernel(
       pathtracePixel,
       cl::NullRange, // TODO(PenguinToast): We can get an extra workgroup here

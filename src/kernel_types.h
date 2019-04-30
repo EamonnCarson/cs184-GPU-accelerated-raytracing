@@ -41,6 +41,14 @@ typedef union kernel_primitive {
   kernel_triangle_t triangle;
 } kernel_primitive_t;
 
+typedef struct kernel_bvh_node {
+  cl_float3 bounds[2];
+  cl_uint prim_index;
+  cl_uint prim_count;
+  cl_uint entry_index; // Index of node to jump to on intersection success
+  cl_uint exit_index; // Index of node to jump to on intersection failure
+} kernel_bvh_node_t;
+
 #pragma pack(pop)
 
 cl_float3 cglVectorToKernel(CGL::Vector3D vector, bool normalize = false);
