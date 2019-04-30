@@ -20,6 +20,8 @@
 #include "static_scene/triangle.h"
 #include "static_scene/light.h"
 
+#include "kernel_types.h"
+
 
 using namespace CGL::StaticScene;
 
@@ -149,7 +151,7 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
   }
   cout << "[PathTracer] Built OpenCL Kernel" << endl;
 
-  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtracePixel");
+  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtrace_pixel");
 }
 
 void PathTracer::set_scene(Scene *scene) {
@@ -342,25 +344,48 @@ void PathTracer::start_raytracing() {
 
   cl::CommandQueue commandQueue(clContext);
 
-  // Memory allocations
+  const int localSize = 8;
+
+  // Set up arguments
+
   vector<cl_float4> output(sampleBuffer.w * sampleBuffer.h, cl_float4());
-  cl::Event ev;
+  cl_uint2 dim = {(cl_uint) sampleBuffer.w, (cl_uint) sampleBuffer.h};
+  kernel_camera_t camera_arg;
+  camera->kernel_struct(&camera_arg);
+
+  // Build kernel primitives array
+  vector<kernel_primitive_t> kernelPrimitives;
+  for (SceneObject *obj : scene->objects) {
+    const vector<Primitive *> &obj_prims = obj->get_primitives();
+    for (auto &prim : obj_prims) {
+      kernel_primitive_t kernel_prim;
+      prim->kernel_struct(&kernel_prim);
+      kernelPrimitives.push_back(kernel_prim);
+    }
+  }
+
+  // Memory allocations
   cl::Buffer outputBuffer(clContext, begin(output), end(output), false);
-  cl_ulong2 dim = {sampleBuffer.w, sampleBuffer.h};
+  cl::Buffer primitivesBuffer(clContext, begin(kernelPrimitives), end(kernelPrimitives), true);
+
   pathtracePixel.setArg(0, outputBuffer);
   pathtracePixel.setArg(1, dim);
-  int err = commandQueue.enqueueNDRangeKernel(pathtracePixel,
-                                              cl::NullRange,
-                                              cl::NDRange(sampleBuffer.w, sampleBuffer.h),
-                                              cl::NDRange(1, 1),
-                                              NULL,
-                                              &ev);
+  pathtracePixel.setArg(2, (cl_uint) samplesPerBatch);
+  pathtracePixel.setArg(3, camera_arg);
+  pathtracePixel.setArg(4, primitivesBuffer);
+  pathtracePixel.setArg(5, (cl_uint) kernelPrimitives.size());
+  int err = commandQueue.enqueueNDRangeKernel(
+      pathtracePixel,
+      cl::NullRange, // TODO(PenguinToast): We can get an extra workgroup here
+      cl::NDRange(sampleBuffer.w + (localSize - sampleBuffer.w % localSize),
+                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize)),
+      cl::NDRange(localSize, localSize));
   if (err != 0) {
     cout << "[Pathtracer] Error queueing kernel: " << err << endl;
     throw 1;
   }
   cout << "[PathTracer] Queued kernel" << endl;
-  ev.wait();
+  commandQueue.finish();
   cout << "[PathTracer] Kernel finished" << endl;
   err = cl::copy(commandQueue, outputBuffer, begin(output), end(output));
   if (err != 0) {

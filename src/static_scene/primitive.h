@@ -4,6 +4,8 @@
 #include "../intersection.h"
 #include "../bbox.h"
 
+#include "../kernel_types.h"
+
 namespace CGL { namespace StaticScene {
 
 /**
@@ -62,6 +64,10 @@ class Primitive {
    */
   virtual void drawOutline(const Color& c, float alpha) const = 0;
 
+  /**
+   * Initialize a kernel primitive corresponding to this one.
+   */
+  virtual void kernel_struct(kernel_primitive_t *kernel_primitive) const = 0;
 };
 
 } // namespace StaticScene

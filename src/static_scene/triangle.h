@@ -71,6 +71,8 @@ namespace CGL { namespace StaticScene {
    */
   void drawOutline(const Color& c, float alpha) const;
 
+  void kernel_struct(kernel_primitive_t *kernel_primitive) const;
+
  private:
 
   const Mesh* mesh;   ///< pointer to the mesh the triangle is a part of

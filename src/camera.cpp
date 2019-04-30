@@ -195,5 +195,14 @@ Ray Camera::generate_ray_for_thin_lens(double x, double y, double rndR, double r
   return ray;
 }
 
+void Camera::kernel_struct(kernel_camera_t *kernel_camera) {
+  kernel_camera->h_fov = radians(hFov);
+  kernel_camera->v_fov = radians(vFov);
+  kernel_camera->n_clip = nClip;
+  kernel_camera->f_clip = fClip;
+  kernel_camera->pos = cglVectorToKernel(pos);
+  kernel_camera->c2w = cglMatrixToKernel(c2w);
+}
+
 
 } // namespace CGL

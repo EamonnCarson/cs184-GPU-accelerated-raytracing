@@ -73,6 +73,10 @@ void Sphere::drawOutline(const Color& c, float alpha) const {
     //Misc::draw_sphere_opengl(o, r, c);
 }
 
+void Sphere::kernel_struct(kernel_primitive_t *kernel_primitive) const {
+  kernel_primitive->type = KERNEL_PRIMITIVE_TYPE_SPHERE;
+}
+
 
 } // namespace StaticScene
 } // namespace CGL

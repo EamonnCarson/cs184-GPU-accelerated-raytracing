@@ -9,6 +9,8 @@
 #include "math.h"
 #include "ray.h"
 
+#include "kernel_types.h"
+
 
 namespace CGL {
 
@@ -92,6 +94,8 @@ class Camera {
   // Lens aperture and focal distance for depth of field effects.
   double lensRadius;
   double focalDistance;
+
+  void kernel_struct(kernel_camera_t *kernel_camera);
 
  protected:
   // Computes pos, screenXDir, screenYDir from target, r, phi, theta.

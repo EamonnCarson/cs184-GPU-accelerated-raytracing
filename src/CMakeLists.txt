@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 2.8)
 # Application source
 if(BUILD_3-1)
     set(APPLICATION_SOURCE
+        # Kernel types
+        kernel_types.cpp
 
         # Collada Parser
         collada/collada.cpp
