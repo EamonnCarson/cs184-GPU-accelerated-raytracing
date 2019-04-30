@@ -214,6 +214,7 @@ string Application::info() {
       return "PathTracer";
       break;
   }
+  return "MeshEdit";
 }
 
 void Application::load(SceneInfo* sceneInfo) {

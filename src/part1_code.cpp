@@ -230,7 +230,7 @@ namespace CGL {
       sampleCountBuffer[x + y * frameBuffer.w] = num_samples;
       return total / num_samples;
     } else {
-      Vector2D sample_offsets[max_samples];
+      vector<Vector2D> sample_offsets(max_samples);
       if (max_samples == 1) {
         sample_offsets[0] = {0.5, 0.5};
       } else {
