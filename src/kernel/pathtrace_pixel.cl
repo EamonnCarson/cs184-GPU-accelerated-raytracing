@@ -141,7 +141,7 @@ float3 est_radiance_global_illumination(ray_t *ray,
   intersection_t isect;
   bool intersected = false;
   for (uint i = 0; i < num_primitives; i++) {
-    intersected = intersected || intersect(ray, &primitives[i], &isect);
+    intersected = intersect(ray, &primitives[i], &isect) || intersected;
   }
   if (intersected) {
     return isect.n * 0.5f + (float3)(.5, .5, .5);

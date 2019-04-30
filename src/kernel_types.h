@@ -1,7 +1,7 @@
 #ifndef KERNEL_TYPES_H
 #define KERNEL_TYPES_H
 
-#include <CL/cl.h>
+#include <CL/cl.hpp>
 
 #include "CGL/vector3D.h"
 #include "CGL/matrix3x3.h"
