@@ -120,11 +120,42 @@ bool intersect_triangle(ray_t *ray, global triangle_t *triangle, intersection_t 
   return true;
 }
 
+bool intersect_sphere(ray_t *ray, global sphere_t *sphere, intersection_t *isect) {
+  float a = dot(ray->d, ray->d);
+  float b = dot(2 * (ray->o - sphere->origin), ray->d);
+  float c = dot(ray->o - sphere->origin, ray->o - sphere->origin)
+            - sphere->radius * sphere->radius;
+  float det = b * b - 4 * a * c;
+  if (det < 0) {
+    return false;
+  }
+
+  float sqrt_det = sqrt(det);
+  float t = (-b - sqrt_det) / (2 * a);
+  if (t < 0) {
+    t = (-b + sqrt_det) / (2 * a);
+  }
+
+  if (t < ray->min_t || t > ray->max_t) {
+    return false;
+  }
+
+  if (isect) {
+    isect->t = t;
+    isect->primitive = (global primitive_t *) sphere;
+    isect->n = normalize((ray->o + ray->d * t) - sphere->origin);
+  }
+
+  ray->max_t = t;
+
+  return true;
+}
+
 bool intersect(ray_t *ray, global primitive_t *primitive, intersection_t *isect) {
   if (primitive->type == PRIMITIVE_TYPE_TRIANGLE) {
     return intersect_triangle(ray, &primitive->triangle, isect);
   } else if (primitive->type == PRIMITIVE_TYPE_SPHERE) {
-    return false;
+    return intersect_sphere(ray, &primitive->sphere, isect);
   } else {
     return false;
   }

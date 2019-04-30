@@ -75,6 +75,9 @@ void Sphere::drawOutline(const Color& c, float alpha) const {
 
 void Sphere::kernel_struct(kernel_primitive_t *kernel_primitive) const {
   kernel_primitive->type = KERNEL_PRIMITIVE_TYPE_SPHERE;
+  kernel_sphere_t *sphere = &kernel_primitive->sphere;
+  sphere->origin = cglVectorToKernel(o);
+  sphere->radius = r;
 }
 
 
