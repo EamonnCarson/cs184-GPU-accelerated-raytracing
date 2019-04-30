@@ -69,18 +69,7 @@ float rand(uint* seed) {
   return (float) (*seed) / m;
 }
 
-/* Path tracing functions */
-
-void generate_ray(camera_t *camera, float cx, float cy, ray_t *output) {
-  float3 dir = (float3)((2 * cx - 1) * tan(camera->h_fov * 0.5f),
-                        (2 * cy - 1) * tan(camera->v_fov * 0.5f),
-                        -1);
-  dir = mat_mul(&camera->c2w, &dir);
-  output->o = camera->pos;
-  output->d = normalize(dir);
-  output->min_t = camera->n_clip;
-  output->max_t = camera->f_clip;
-}
+/* Intersection functions */
 
 bool intersect_triangle(ray_t *ray, global triangle_t *triangle, intersection_t *isect) {
   float3 v0v1 = triangle->vertices[1] - triangle->vertices[0];
@@ -161,6 +150,19 @@ bool intersect_primitive(ray_t *ray,
   } else {
     return false;
   }
+}
+
+/* Path tracing functions */
+
+void generate_ray(camera_t *camera, float cx, float cy, ray_t *output) {
+  float3 dir = (float3)((2 * cx - 1) * tan(camera->h_fov * 0.5f),
+                        (2 * cy - 1) * tan(camera->v_fov * 0.5f),
+                        -1);
+  dir = mat_mul(&camera->c2w, &dir);
+  output->o = camera->pos;
+  output->d = normalize(dir);
+  output->min_t = camera->n_clip;
+  output->max_t = camera->f_clip;
 }
 
 float3 est_radiance_global_illumination(ray_t *ray,
