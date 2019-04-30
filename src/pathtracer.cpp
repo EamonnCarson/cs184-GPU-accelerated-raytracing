@@ -370,7 +370,7 @@ void PathTracer::start_raytracing() {
 
   pathtracePixel.setArg(0, outputBuffer);
   pathtracePixel.setArg(1, dim);
-  pathtracePixel.setArg(2, (cl_uint) samplesPerBatch);
+  pathtracePixel.setArg(2, (cl_uint) ns_aa);
   pathtracePixel.setArg(3, camera_arg);
   pathtracePixel.setArg(4, primitivesBuffer);
   pathtracePixel.setArg(5, (cl_uint) kernelPrimitives.size());

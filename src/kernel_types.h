@@ -45,6 +45,6 @@ typedef union kernel_primitive {
 
 cl_float3 cglVectorToKernel(CGL::Vector3D vector);
 
-kernel_mat3 cglMatrixToKernel(CGL::Matrix3x3 matrix);
+kernel_mat3_t cglMatrixToKernel(CGL::Matrix3x3 matrix);
 
 #endif // KERNEL_TYPES_H
