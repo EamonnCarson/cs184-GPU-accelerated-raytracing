@@ -197,22 +197,20 @@ pathtrace_pixel(global float4 *output_image,
   }
 
   float3 total = (float3)(0, 0, 0);
-  if (num_samples == 1) {
+  for (int i = 0; i < num_samples; i++) {
     ray_t ray;
-    generate_ray(&camera,
-                  (x + 0.5f) / dimensions.x,
-                  (y + 0.5f) / dimensions.y,
-                  &ray);
-    total = est_radiance_global_illumination(&ray, primitives, num_primitives);
-  } else {
-    for (int i = 0; i < num_samples; i++) {
-      ray_t ray;
+    if (num_samples == 1) {
+      generate_ray(&camera,
+                   (x + 0.5f) / dimensions.x,
+                   (y + 0.5f) / dimensions.y,
+                   &ray);
+    } else {
       generate_ray(&camera,
                    (x + rand(&seed)) / dimensions.x,
                    (y + rand(&seed)) / dimensions.y,
                    &ray);
-      total += est_radiance_global_illumination(&ray, primitives, num_primitives);
     }
+    total += est_radiance_global_illumination(&ray, primitives, num_primitives);
   }
   output_image[y * dimensions.x + x] = (float4)(total / num_samples, 1);
 }
