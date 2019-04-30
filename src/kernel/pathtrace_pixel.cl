@@ -111,10 +111,9 @@ bool intersect_triangle(ray_t *ray, global triangle_t *triangle, intersection_t 
   if (isect) {
     isect->t = t;
     isect->primitive = (global primitive_t *) triangle;
-    isect->n = normalize((1.0f - u - v) * triangle->normals[0]
     isect->n = (1.f - u - v) * triangle->normals[0]
                + u * triangle->normals[1]
-               + v * triangle->normals[2]);
+               + v * triangle->normals[2];
   }
 
   ray->max_t = t;
