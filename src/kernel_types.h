@@ -43,7 +43,7 @@ typedef union kernel_primitive {
 
 #pragma pack(pop)
 
-cl_float3 cglVectorToKernel(CGL::Vector3D vector);
+cl_float3 cglVectorToKernel(CGL::Vector3D vector, bool normalize = false);
 
 kernel_mat3_t cglMatrixToKernel(CGL::Matrix3x3 matrix);
 

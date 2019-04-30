@@ -1,7 +1,14 @@
 #include "kernel_types.h"
 
-cl_float3 cglVectorToKernel(CGL::Vector3D vector) {
-  return {(float) vector.x, (float) vector.y, (float) vector.z};
+cl_float3 cglVectorToKernel(CGL::Vector3D vector, bool normalize) {
+  cl_float3 out = {(float) vector.x, (float) vector.y, (float) vector.z};
+  if (normalize) {
+    cl_float sum = fabs(out.s0 + out.s1 + out.s2);
+    out.s0 /= sum;
+    out.s1 /= sum;
+    out.s2 /= sum;
+  }
+  return out;
 }
 
 kernel_mat3 cglMatrixToKernel(CGL::Matrix3x3 matrix) {

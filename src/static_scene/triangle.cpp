@@ -106,9 +106,9 @@ void Triangle::kernel_struct(kernel_primitive_t *kernel_primitive) const {
   kernel_triangle->vertices[0] = cglVectorToKernel(mesh->positions[v1]);
   kernel_triangle->vertices[1] = cglVectorToKernel(mesh->positions[v2]);
   kernel_triangle->vertices[2] = cglVectorToKernel(mesh->positions[v3]);
-  kernel_triangle->normals[0] = cglVectorToKernel(mesh->normals[v1]);
-  kernel_triangle->normals[1] = cglVectorToKernel(mesh->normals[v2]);
-  kernel_triangle->normals[2] = cglVectorToKernel(mesh->normals[v3]);
+  kernel_triangle->normals[0] = cglVectorToKernel(mesh->normals[v1], true);
+  kernel_triangle->normals[1] = cglVectorToKernel(mesh->normals[v2], true);
+  kernel_triangle->normals[2] = cglVectorToKernel(mesh->normals[v3], true);
 }
 
 

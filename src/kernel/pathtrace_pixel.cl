@@ -1,7 +1,5 @@
 /* Structures that are shared between host/device */
 
-#define EPS_F 0.00001f
-
 typedef struct __attribute__ ((packed)) bvh_node {
   float3 min;
   float3 max;
@@ -98,26 +96,27 @@ bool intersect_triangle(ray_t *ray, global triangle_t *triangle, intersection_t 
   if (u < 0.0f || u > 1.0f) {
     return false;
   }
-  
+
   float3 qvec = cross(tvec, v0v1);
   float v = dot(ray->d, qvec) * invDet;
   if (v < 0.0f || u + v > 1.0f) {
     return false;
   }
-  
+
   float t = dot(v0v2, qvec) * invDet;
   if (t < ray->min_t || t > ray->max_t) {
     return false;
   }
-  
+
   if (isect) {
     isect->t = t;
     isect->primitive = (global primitive_t *) triangle;
     isect->n = normalize((1.0f - u - v) * triangle->normals[0]
+    isect->n = (1.f - u - v) * triangle->normals[0]
                + u * triangle->normals[1]
                + v * triangle->normals[2]);
   }
-  
+
   ray->max_t = t;
   return true;
 }
