@@ -151,7 +151,9 @@ bool intersect_sphere(ray_t *ray, global sphere_t *sphere, intersection_t *isect
   return true;
 }
 
-bool intersect(ray_t *ray, global primitive_t *primitive, intersection_t *isect) {
+bool intersect_primitive(ray_t *ray,
+                         global primitive_t *primitive,
+                         intersection_t *isect) {
   if (primitive->type == PRIMITIVE_TYPE_TRIANGLE) {
     return intersect_triangle(ray, &primitive->triangle, isect);
   } else if (primitive->type == PRIMITIVE_TYPE_SPHERE) {
@@ -167,7 +169,7 @@ float3 est_radiance_global_illumination(ray_t *ray,
   intersection_t isect;
   bool intersected = false;
   for (uint i = 0; i < num_primitives; i++) {
-    intersected = intersect(ray, &primitives[i], &isect) || intersected;
+    intersected = intersect_primitive(ray, &primitives[i], &isect) || intersected;
   }
   if (intersected) {
     return (isect.n * 0.5f) + (float3)(0.5f, 0.5f, 0.5f);
