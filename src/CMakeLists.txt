@@ -119,7 +119,6 @@ link_directories(
 #-------------------------------------------------------------------------------
 set(OPENCL_KERNEL_SOURCE
   kernel/pathtrace_pixel.cl
-  kernel/test2.cl
   )
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../kernel")
