@@ -127,8 +127,9 @@ FOREACH(KERNEL ${OPENCL_KERNEL_SOURCE})
   string(REGEX REPLACE "\\.cl" ".ll" KERNEL_IR ${KERNEL})
   set(KERNEL_IR "${CMAKE_CURRENT_BINARY_DIR}/../${KERNEL_IR}")
   list(APPEND OPENCL_KERNEL_IR ${KERNEL_IR})
+  get_filename_component(KERNEL_FOLDER ${KERNEL} DIRECTORY)
   add_custom_command(OUTPUT ${KERNEL_IR}
-    COMMAND clang-8 -S -emit-llvm -Xclang -finclude-default-header -cl-std=CL1.2 -o ${KERNEL_IR} "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
+    COMMAND clang-8 -S -emit-llvm -Xclang -finclude-default-header -cl-std=CL1.2 -I${KERNEL_FOLDER} -o ${KERNEL_IR} "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
     MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
     COMMENT "Checking ${KERNEL}"
     )
