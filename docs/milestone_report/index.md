@@ -44,3 +44,4 @@ Depending on how squeezed we are for time, we may need to stop work on importanc
 [Click this link to see the milestone slide show](https://docs.google.com/presentation/d/e/2PACX-1vSz2fW5cA52-eeCSBh4bAUiQwhRjFbWnK33cN2306zHP4m0o4lz3Jas4tF-UhsGEfcCku5vgNWJobxN/pub?start=false&loop=false&delayms=30000)
 
 ## Video Presentation
+[Click this link to see the milestone video](https://youtu.be/IRanldDhsLI)
