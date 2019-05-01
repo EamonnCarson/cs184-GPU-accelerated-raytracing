@@ -1,124 +1,46 @@
 # CS 184: Computer Graphics and Imaging, Spring 2019
-## Project 3-2: Pathtracer (2)
-###### William Sheu, cs184-adw
+## Final Project Milestone Report: GPU Accelerated Raytracing
+###### Authors: William Sheu, Eric Zhou, Eamonn Carson
 
-## Overview
+## Current Accompishments
+Currently we have ported the basic engine of project 3-2 over to the OpenCL framework.
+Specifically, we have:
+1. Set up our OpenCL libraries and gotten our code to work on Ubuntu and Windows (OpenCL is deprecated in OSX and isn't compiling properly, so we have abandoned OSX compatability for now)
+2. Implemented basic raytracing for triangles and spheres. There is no lighting implemented, and we use the normal values as textures.
+3. Implemented a pretty involved kernel bounding volume hierarchy (kernel BVH). We considered this a necessary component in order to compete with CPU based raytracing methods.
 
-For this project, I expanded on the pathtracer from the previous part by adding
-support for mirror, glass, and microfacet materials, as well as support for
-environment lights and depth of field.
+## Progress Relative to Original Timeline
+The original timeline that we presented went as such:
+- 4/9-4/16: Gain familiarity with OpenCL
+- 4/16-4/23: Port over the computationally intensive parts of Project 3 to use OpenCL instead
+- 4/23-4/30: Finish porting, begin running benchmarks
+- 4/30-5/9: Work on final presentation. If there is remaining time, work on stretch goals.
 
-## Part 1: Mirror and Glass Materials
+Our current progress (today is 4/30) is that we are still about a bit less than halfway through the porting step.
+As such, we are approximately one week behind schedule.
+We will likely not have to abandon any of our original goals; however, it is unlikely that we will be able to achieve any stretch goals, and only will have time to create a basic implementation of a GPU raytracer.
 
-![](images/part1_spheres_0.png)  
-Spheres rendered with max ray depth of 0. Only the light source can be seen.
+Things that remain to be done are:
+1. Finish porting project 3-2 to use OpenCL
+    - Implement direct lighting
+    - Implement materials (microfacet, mirrors, diffuse, glass)
+    - Implement indirect lighting
+2. Benchmark our code
+3. Write final report
 
-![](images/part1_spheres_1.png)  
-Max ray depth of 1: We can see the walls now, but we don't have enough bounces
-for the spheres to have any color.
+## Reflection on Progress
+Overall we have a fair bit of work set out for us; however, it also appears that our velocity is high enough (because William is a wizard) that completing all tasks on time is feasible. 
 
-![](images/part1_spheres_2.png)  
-Max ray depth of 2: We see the ceiling, and we can see the environment from the
-previous image reflected on the mirror sphere. We start to see the light source
-in the glass sphere.
+The implementation of direct lighting will be of middling difficulty, since the operation is by nature embarassingly parallel (independent samples from independent points on independent light source). 
 
-![](images/part1_spheres_3.png)  
-Max ray depth of 3: We see the scene from the previous image reflected in the
-mirror sphere, and the scene from 2 images ago refracted in the glass
-sphere. Notice that we can now see the walls in the glass sphere.
+The hardest part that will be coming to us is definitely going to be the implementation of the implementation of indirect lighting, since the recursive structure of that operation will be difficult to replicate because its a long sequential sequential process as opposed to the short parallelizeable processes that OpenCL is really meant for.
 
-![](images/part1_spheres_4.png)  
-Max ray depth of 4: We see the scene from the previous image reflected in the
-mirror sphere, and the scene from 2 images ago refracted in the glass
-sphere. Notice that the glass sphere reflection on the mirror sphere is now lit
-up, and the light in the glass sphere's shadow.
+However, afterwards the work will be fairly easy and distributable: materials are likely going to be almost identical to those that we've implemented already (we'd just port them to the OpenCL architecture), and benchmarks and the final report are not particularly difficult.
 
-![](images/part1_spheres_5.png)  
-Max ray depth of 5: We see the scene from the previous image reflected in the
-mirror sphere, and the scene from 2 images ago refracted in the glass
-sphere. Note the light in the glass sphere's shadow now showing up in its
-reflection on the mirror sphere.
+## Updated Work Plan
+Depending on how squeezed we are for time, we may need to stop work on importance sampling and only have uniform sampling, and we may need to skip some types of materials (microfacet for example). Other than that there are no major changes to our work plan.
 
-![](images/part1_spheres_100.png)  
-Max ray depth of 100: Not too different from the previous render; just brighter
-as the light bouncces more.
+## Slideshow Presentation
+[Click this link to see the milestone slideshow](https://docs.google.com/presentation/d/e/2PACX-1vSz2fW5cA52-eeCSBh4bAUiQwhRjFbWnK33cN2306zHP4m0o4lz3Jas4tF-UhsGEfcCku5vgNWJobxN/pub?start=false&loop=false&delayms=30000)
 
-## Part 2: Microfacet Materials
-
-![](images/part2_dragon_005.png)  
-Dragon with alpha of 0.005: Very glossy surface
-
-![](images/part2_dragon_05.png)  
-Dragon with alpha of 0.05: Fairly glossy surface
-
-![](images/part2_dragon_25.png)  
-Dragon with alpha of 0.25: Fairly matte surface, but still slightly glosssy
-
-![](images/part2_dragon_5.png)  
-Dragon with alpha of 0.5: Very matte surface
-
-![](images/part2_bunny_hemisphere.png)  
-Bunny rendered with hemisphere sampling - very noisy render
-
-![](images/part2_bunny_importance.png)  
-Bunny rendered with importance sampling - same render time, but much less noisy
-render
-
-![](images/part2_dragon_ag.png)  
-Dragon rendered with silver as the material instead of gold
-
-## Part 3: Environment Light
-
-For environment lighting, we replace our black background with an environment
-map. We sample from this environment for lighting when rays don't intersect any
-primitives in the scene, so that the illumination and colors from the
-environment are visible in our render. This lets us render scenes in various
-environments without having to model the environments.
-
-![](images/grace.png)  
-Grace EXR used to render the following images
-
-![](images/grace_probability.png)  
-Probability debug image for grace.exr
-
-![](images/part3_bunny_uniform.png)  
-Bunny with uniform sampling - extremely noisy render
-
-![](images/part3_bunny_importance.png)  
-Bunny with importance sampling - very clear render
-
-![](images/part3_bunny_microfacet_uniform.png)  
-Microfacet bunny with uniform sampling - extremely noisy render
-
-![](images/part3_bunny_microfacet_importance.png)  
-Microfacet bunny with importance sampling - much less noisy render
-
-## Part 4: Depth of Field
-
-With a pinhole camera model, every point in the scene is in focus. With a
-thin-lens camera model, there is a focal plane where things are in focus, but
-due to the way we sample from the lens, every other point will not be in focus.
-
-![](images/part4_dragon_closest.png)  
-Dragon rendered with focal distance at the nose
-
-![](images/part4_dragon_closer.png)  
-Dragon rendered with focal distance at the horns
-
-![](images/part4_dragon_farther.png)  
-Dragon rendered with focal distance around the middle
-
-![](images/part4_dragon_farthest.png)  
-Dragon rendered with focal distance at the tail
-
-![](images/part4_dragon_smallest.png)  
-Dragon rendered with focal distance at the nose, and a tiny aperture size
-
-![](images/part4_dragon_smaller.png)  
-Dragon rendered with focal distance at the nose, and a small aperture size
-
-![](images/part4_dragon_larger.png)  
-Dragon rendered with focal distance at the nose, and a medium aperture size
-
-![](images/part4_dragon_largest.png)  
-Dragon rendered with focal distance at the nose, and a large aperture size
+## Video Presentation
