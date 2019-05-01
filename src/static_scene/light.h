@@ -20,6 +20,7 @@ class DirectionalLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return true; }
+  void kernel_struct(kernel_light_t *kernel_light);
 
  private:
   Spectrum radiance;
@@ -35,6 +36,7 @@ class InfiniteHemisphereLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return false; }
+  void kernel_struct(kernel_light_t *kernel_light);
 
  private:
   Spectrum radiance;
@@ -52,6 +54,7 @@ class PointLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return true; }
+  void kernel_struct(kernel_light_t *kernel_light);
 
  private:
   Spectrum radiance;
@@ -68,6 +71,9 @@ class SpotLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return true; }
+  void kernel_struct(kernel_light_t *kernel_light) {
+    throw std::runtime_error("Spot lights not supported");
+  };
 
  private:
   Spectrum radiance;
@@ -87,6 +93,7 @@ class AreaLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return false; }
+  void kernel_struct(kernel_light_t *kernel_light);
 
  private:
   Spectrum radiance;
@@ -107,6 +114,9 @@ class SphereLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return false; }
+  void kernel_struct(kernel_light_t *kernel_light) {
+    throw std::runtime_error("Sphere lights not supported");
+  }
 
  private:
   const SphereObject* sphere;
@@ -123,6 +133,9 @@ class MeshLight : public SceneLight {
   Spectrum sample_L(const Vector3D& p, Vector3D* wi, float* distToLight,
                     float* pdf) const;
   bool is_delta_light() const { return false; }
+  void kernel_struct(kernel_light_t *kernel_light) {
+    throw std::runtime_error("Mesh lights not supported");
+  }
 
  private:
   const Mesh* mesh;

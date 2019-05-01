@@ -45,6 +45,10 @@ class EnvironmentLight : public SceneLight {
    */
   Spectrum sample_dir(const Ray& r) const;
 
+  void kernel_struct(kernel_light_t *kernel_light) {
+    throw std::runtime_error("Environment lights not yet supported");
+  };
+
 private:
  const HDRImageBuffer* envMap;
  UniformGridSampler2D sampler_uniform2d;

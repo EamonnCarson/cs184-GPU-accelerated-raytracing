@@ -345,10 +345,18 @@ void PathTracer::start_raytracing() {
   vector<kernel_bsdf_t> kernelBSDFs;
   bvh->kernel_struct(kernelBVH, kernelPrimitives, kernelBSDFs);
 
+  vector<kernel_light_t> kernelLights;
+  for (SceneLight *light : scene->lights) {
+    kernel_light_t kernel_light;
+    light->kernel_struct(&kernel_light);
+    kernelLights.push_back(kernel_light);
+  }
+
   // Memory allocations
   cl::Buffer outputBuffer(clContext, begin(output), end(output), false);
   cl::Buffer bvhBuffer(clContext, begin(kernelBVH), end(kernelBVH), true);
   cl::Buffer primitivesBuffer(clContext, begin(kernelPrimitives), end(kernelPrimitives), true);
+  cl::Buffer lightBuffer(clContext, begin(kernelLights), end(kernelLights), true);
   cl::Buffer bsdfBuffer(clContext, begin(kernelBSDFs), end(kernelBSDFs), true);
 
   uint32_t argNum = 0;
@@ -360,8 +368,8 @@ void PathTracer::start_raytracing() {
   pathtracePixel.setArg(argNum++, camera_arg);
   pathtracePixel.setArg(argNum++, bvhBuffer);
   pathtracePixel.setArg(argNum++, primitivesBuffer);
-  pathtracePixel.setArg(argNum++, primitivesBuffer);
-  pathtracePixel.setArg(argNum++, (cl_uint) 0);
+  pathtracePixel.setArg(argNum++, lightBuffer);
+  pathtracePixel.setArg(argNum++, (cl_uint) kernelLights.size());
   pathtracePixel.setArg(argNum++, bsdfBuffer);
   int err = commandQueue.enqueueNDRangeKernel(
       pathtracePixel,

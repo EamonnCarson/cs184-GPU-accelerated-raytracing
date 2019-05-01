@@ -38,6 +38,8 @@ class SceneLight {
                             float* distToLight, float* pdf) const = 0;
   virtual bool is_delta_light() const = 0;
 
+  virtual void kernel_struct(kernel_light_t *kernel_light) = 0;
+
 };
 
 

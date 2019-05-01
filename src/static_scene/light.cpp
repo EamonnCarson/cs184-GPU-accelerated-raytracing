@@ -22,6 +22,13 @@ Spectrum DirectionalLight::sample_L(const Vector3D& p, Vector3D* wi,
   return radiance;
 }
 
+void DirectionalLight::kernel_struct(kernel_light_t *kernel_light) {
+  kernel_light->type = KERNEL_LIGHT_TYPE_DIRECTIONAL;
+  kernel_directional_light_t *light = &kernel_light->u.directional;
+  light->radiance = cglSpectrumToKernel(radiance);
+  light->dir_to_light = cglVectorToKernel(dirToLight);
+}
+
 // Infinite Hemisphere Light //
 
 InfiniteHemisphereLight::InfiniteHemisphereLight(const Spectrum& rad)
@@ -41,9 +48,15 @@ Spectrum InfiniteHemisphereLight::sample_L(const Vector3D& p, Vector3D* wi,
   return radiance;
 }
 
+void InfiniteHemisphereLight::kernel_struct(kernel_light_t *kernel_light) {
+  kernel_light->type = KERNEL_LIGHT_TYPE_HEMISPHERE;
+  kernel_hemisphere_light_t *light = &kernel_light->u.hemisphere;
+  light->radiance = cglSpectrumToKernel(radiance);
+}
+
 // Point Light //
 
-PointLight::PointLight(const Spectrum& rad, const Vector3D& pos) : 
+PointLight::PointLight(const Spectrum& rad, const Vector3D& pos) :
   radiance(rad), position(pos) { }
 
 Spectrum PointLight::sample_L(const Vector3D& p, Vector3D* wi,
@@ -54,6 +67,13 @@ Spectrum PointLight::sample_L(const Vector3D& p, Vector3D* wi,
   *distToLight = d.norm();
   *pdf = 1.0;
   return radiance;
+}
+
+void PointLight::kernel_struct(kernel_light_t *kernel_light) {
+  kernel_light->type = KERNEL_LIGHT_TYPE_POINT;
+  kernel_point_light_t *light = &kernel_light->u.point;
+  light->radiance = cglSpectrumToKernel(radiance);
+  light->position = cglVectorToKernel(position);
 }
 
 // Spot Light //
@@ -90,6 +110,16 @@ Spectrum AreaLight::sample_L(const Vector3D& p, Vector3D* wi,
   *pdf = sqDist / (area * fabs(cosTheta));
   return cosTheta < 0 ? radiance : Spectrum();
 };
+
+void AreaLight::kernel_struct(kernel_light_t *kernel_light) {
+  kernel_light->type = KERNEL_LIGHT_TYPE_AREA;
+  kernel_area_light_t *light = &kernel_light->u.area;
+  light->radiance = cglSpectrumToKernel(radiance);
+  light->position = cglVectorToKernel(position);
+  light->direction = cglVectorToKernel(direction, true);
+  light->dim_x = cglVectorToKernel(dim_x);
+  light->dim_y = cglVectorToKernel(dim_y);
+}
 
 // Sphere Light //
 
