@@ -2,6 +2,7 @@
 #include "util.h"
 #include "intersect.h"
 #include "light.h"
+#include "bsdf.h"
 
 /* Path tracing functions */
 
