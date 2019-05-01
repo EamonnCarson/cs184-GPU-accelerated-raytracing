@@ -6,11 +6,11 @@
 Currently we have ported the basic engine of project 3-2 over to the OpenCL framework.
 Specifically, we have:
 1. Set up our OpenCL libraries and gotten our code to work on Ubuntu and Windows (OpenCL is deprecated in OSX and isn't compiling properly, so we have abandoned OSX compatibility for now)
-2. Implemented basic raytracing for triangles and spheres. There is no lighting implemented, and we use the normal values as textures.
-3. Implemented a kernel bounding volume hierarchy (kernel BVH). We considered this a necessary component in order to compete with CPU based raytracing methods. BVH construction was the same as normal, however we needed to flatten the BVH into an array in order to allow the OpenCL kernels to use it efficiently.
+2. Implemented basic raytracing for triangles and spheres. There is no lighting implemented yet, so we just display the value of the surface normal at the intersection for each pixel.
+3. Implemented traversal of a bounding volume hierarchy on GPU. We considered this a necessary component in order to compete with CPU based raytracing methods. BVH construction was kept on the CPU, but we needed to flatten the BVH so that it would be laid out contiguously in mermory in order to interface with the OpenCl kernel.
 
-## Progress Relative to Original Time line
-The original time line that we presented went as such:
+## Progress Relative to Original Timeline
+The original timeline that we presented went as such:
 - 4/9-4/16: Gain familiarity with OpenCL
 - 4/16-4/23: Port over the computationally intensive parts of Project 3 to use OpenCL instead
 - 4/23-4/30: Finish porting, begin running benchmarks
