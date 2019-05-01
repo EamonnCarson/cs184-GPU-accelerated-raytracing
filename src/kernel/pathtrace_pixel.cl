@@ -1,6 +1,7 @@
 #include "types.h"
 #include "util.h"
 #include "intersect.h"
+#include "light.h"
 
 /* Path tracing functions */
 
