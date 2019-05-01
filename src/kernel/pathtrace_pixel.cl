@@ -17,14 +17,29 @@ void generate_ray(camera_t *camera, float cx, float cy, ray_t *output) {
   output->max_t = camera->f_clip;
 }
 
+float3 zero_bounce_radiance(ray_t *ray,
+                            intersection_t *isect,
+                            global_state_t *globals) {
+  float3 radiance;
+  bsdf_get_emission(&globals->bsdfs[isect->bsdf_index],
+                    &radiance,
+                    globals);
+  return radiance;
+}
+
 float3 est_radiance_global_illumination(ray_t *ray,
                                         global_state_t *globals) {
   intersection_t isect;
-  bool intersected = intersect_bvh(ray, globals->bvh, globals->primitives, &isect);
-  if (intersected) {
-    return (isect.n * 0.5f) + (float3)(0.5f, 0.5f, 0.5f);
+  float3 L_out = (float3)(0, 0, 0);
+  if (!intersect_bvh(ray, globals->bvh, globals->primitives, &isect)) {
+    return L_out;
   }
-  return (float3)(0, 0, 0);
+
+  L_out += zero_bounce_radiance(ray, &isect, globals);
+
+
+
+  return L_out;
 }
 
 kernel void
