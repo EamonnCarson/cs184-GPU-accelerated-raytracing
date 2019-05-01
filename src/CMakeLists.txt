@@ -119,6 +119,9 @@ link_directories(
 #-------------------------------------------------------------------------------
 set(OPENCL_KERNEL_SOURCE
   kernel/pathtrace_pixel.cl
+  kernel/shared_types.h
+  kernel/intersect.h
+  kernel/util.h
   )
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../kernel")

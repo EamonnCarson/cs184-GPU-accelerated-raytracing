@@ -95,6 +95,7 @@ PathTracer::~PathTracer() {
 
 void PathTracer::init_open_cl(cl_device_type device_type) {
   // TODO(PenguinToast): Do proper error handling (throw an exception)
+  setenv("CUDA_CACHE_DISABLE", "1", 1);
   std::vector<cl::Platform> platforms;
   cl::Platform::get(&platforms);
   if (platforms.empty()) {
