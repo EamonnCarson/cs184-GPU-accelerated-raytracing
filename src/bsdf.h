@@ -8,6 +8,7 @@
 
 #include "sampler.h"
 #include "image.h"
+#include "kernel_types.h"
 
 #include <algorithm>
 
@@ -105,6 +106,11 @@ class BSDF {
    */
   virtual bool refract(const Vector3D& wo, Vector3D* wi, float ior);
 
+  /**
+   * Host->Device struct conversion
+   */
+  virtual void kernel_struct(kernel_bsdf_t *kernel_bsdf) = 0;
+
   const HDRImageBuffer* reflectanceMap;
   const HDRImageBuffer* normalMap;
 
@@ -122,6 +128,7 @@ class DiffuseBSDF : public BSDF {
   Spectrum sample_f(const Vector3D& wo, Vector3D* wi, float* pdf);
   Spectrum get_emission() const { return Spectrum(); }
   bool is_delta() const { return false; }
+  void kernel_struct(kernel_bsdf_t *kernel_bsdf);
 
 private:
 
@@ -142,6 +149,7 @@ class MirrorBSDF : public BSDF {
   Spectrum sample_f(const Vector3D& wo, Vector3D* wi, float* pdf);
   Spectrum get_emission() const { return Spectrum(); }
   bool is_delta() const { return true; }
+  void kernel_struct(kernel_bsdf_t *kernel_bsdf);
 
 private:
 
@@ -180,6 +188,7 @@ class MicrofacetBSDF : public BSDF {
   Spectrum sample_f(const Vector3D& wo, Vector3D* wi, float* pdf);
   Spectrum get_emission() const { return Spectrum(); }
   bool is_delta() const { return false; }
+  void kernel_struct(kernel_bsdf_t *kernel_bsdf);
 
 private:
   Spectrum eta, k;
@@ -201,6 +210,9 @@ class RefractionBSDF : public BSDF {
   Spectrum sample_f(const Vector3D& wo, Vector3D* wi, float* pdf);
   Spectrum get_emission() const { return Spectrum(); }
   bool is_delta() const { return true; }
+  void kernel_struct(kernel_bsdf_t *kernel_bsdf) {
+    throw std::runtime_error("Refraction BSDF not supported");
+  };
 
  private:
 
@@ -225,6 +237,7 @@ class GlassBSDF : public BSDF {
   Spectrum sample_f(const Vector3D& wo, Vector3D* wi, float* pdf);
   Spectrum get_emission() const { return Spectrum(); }
   bool is_delta() const { return true; }
+  void kernel_struct(kernel_bsdf_t *kernel_bsdf);
 
  private:
 
@@ -247,6 +260,7 @@ class EmissionBSDF : public BSDF {
   Spectrum sample_f(const Vector3D& wo, Vector3D* wi, float* pdf);
   Spectrum get_emission() const { return radiance; }
   bool is_delta() const { return false; }
+  void kernel_struct(kernel_bsdf_t *kernel_bsdf);
 
  private:
 

@@ -42,6 +42,11 @@ Spectrum MirrorBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) {
   return reflectance / abs_cos_theta(*wi);
 }
 
+void MirrorBSDF::kernel_struct(kernel_bsdf_t *kernel_bsdf) {
+  kernel_bsdf->type = KERNEL_BSDF_TYPE_MIRROR;
+  kernel_bsdf->u.mirror.reflectance = cglSpectrumToKernel(reflectance);
+}
+
 // Microfacet BSDF //
 
 double MicrofacetBSDF::G(const Vector3D& wo, const Vector3D& wi) {
@@ -110,6 +115,14 @@ Spectrum MicrofacetBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) 
   return f(wo, *wi);
 }
 
+void MicrofacetBSDF::kernel_struct(kernel_bsdf_t *kernel_bsdf) {
+  kernel_bsdf->type = KERNEL_BSDF_TYPE_MICROFACET;
+  kernel_microfacet_bsdf_t *microfacet = &kernel_bsdf->u.microfacet;
+  microfacet->eta = cglSpectrumToKernel(eta);
+  microfacet->k = cglSpectrumToKernel(k);
+  microfacet->alpha = alpha;
+}
+
 // Refraction BSDF //
 
 Spectrum RefractionBSDF::f(const Vector3D& wo, const Vector3D& wi) {
@@ -148,6 +161,14 @@ Spectrum GlassBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) {
     }
   }
   return Spectrum();
+}
+
+void GlassBSDF::kernel_struct(kernel_bsdf_t *kernel_bsdf) {
+  kernel_bsdf->type = KERNEL_BSDF_TYPE_GLASS;
+  kernel_glass_bsdf_t *glass = &kernel_bsdf->u.glass;
+  glass->ior = ior;
+  glass->reflectance = cglSpectrumToKernel(reflectance);
+  glass->transmittance = cglSpectrumToKernel(transmittance);
 }
 
 void BSDF::reflect(const Vector3D& wo, Vector3D* wi) {
@@ -193,6 +214,18 @@ Spectrum EmissionBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) {
   *pdf = 1.0 / PI;
   *wi  = sampler.get_sample(pdf);
   return Spectrum();
+}
+
+void EmissionBSDF::kernel_struct(kernel_bsdf_t *kernel_bsdf) {
+  kernel_bsdf->type = KERNEL_BSDF_TYPE_EMISSION;
+  kernel_bsdf->u.emission.radiance = cglSpectrumToKernel(radiance);
+}
+
+// Diffuse BSDF //
+
+void DiffuseBSDF::kernel_struct(kernel_bsdf_t *kernel_bsdf) {
+  kernel_bsdf->type = KERNEL_BSDF_TYPE_DIFFUSE;
+  kernel_bsdf->u.diffuse.reflectance = cglSpectrumToKernel(reflectance);
 }
 
 } // namespace CGL

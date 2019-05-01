@@ -11,6 +11,10 @@ cl_float3 cglVectorToKernel(CGL::Vector3D vector, bool normalize) {
   return out;
 }
 
+cl_float3 cglSpectrumToKernel(CGL::Spectrum spectrum) {
+  return {spectrum.r, spectrum.g, spectrum.b};
+}
+
 kernel_mat3 cglMatrixToKernel(CGL::Matrix3x3 matrix) {
   return {
     {(float) matrix[0][0], (float) matrix[0][1], (float) matrix[0][2]},

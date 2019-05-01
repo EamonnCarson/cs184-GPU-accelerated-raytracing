@@ -197,7 +197,8 @@ bool BVHAccel::intersect(const Ray& ray, Intersection* i, BVHNode *node) const {
 
 size_t BVHNode::kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
                               std::vector<kernel_primitive_t>& kernel_primitives,
-                              size_t exit_index) const {
+                              std::vector<BSDF*>& bsdf_pointers,
+                              size_t exit_index) {
   size_t my_index = kernel_bvh.size();
   kernel_bvh.emplace_back();
   kernel_bvh_node_t node;
@@ -216,13 +217,13 @@ size_t BVHNode::kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
     node.prim_index = kernel_primitives.size();
     for (auto prim : *prims) {
       kernel_primitive_t kernel_prim;
-      prim->kernel_struct(&kernel_prim);
+      prim->kernel_struct(&kernel_prim, bsdf_pointers);
       kernel_primitives.push_back(kernel_prim);
     }
   } else {
     // Push right side first
-    size_t right_index = r->kernel_struct(kernel_bvh, kernel_primitives, exit_index);
-    node.entry_index = l->kernel_struct(kernel_bvh, kernel_primitives, right_index);
+    size_t right_index = r->kernel_struct(kernel_bvh, kernel_primitives, bsdf_pointers, exit_index);
+    node.entry_index = l->kernel_struct(kernel_bvh, kernel_primitives, bsdf_pointers, right_index);
   }
 
   kernel_bvh[my_index] = node;
@@ -230,8 +231,15 @@ size_t BVHNode::kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
 }
 
 void BVHAccel::kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
-                             std::vector<kernel_primitive_t>& kernel_primitives) const {
-  root->kernel_struct(kernel_bvh, kernel_primitives, 0);
+                             std::vector<kernel_primitive_t>& kernel_primitives,
+                             std::vector<kernel_bsdf_t>& kernel_bsdfs) {
+  std::vector<BSDF*> bsdf_pointers;
+  root->kernel_struct(kernel_bvh, kernel_primitives, bsdf_pointers, 0);
+  for (auto& bsdf : bsdf_pointers) {
+    kernel_bsdf_t kernel_bsdf;
+    bsdf->kernel_struct(&kernel_bsdf);
+    kernel_bsdfs.push_back(kernel_bsdf);
+  }
 }
 
 }  // namespace StaticScene

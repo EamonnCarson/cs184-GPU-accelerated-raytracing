@@ -32,7 +32,8 @@ struct BVHNode {
   inline bool isLeaf() const { return l == NULL && r == NULL; }
   size_t kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
                        std::vector<kernel_primitive_t>& kernel_primitives,
-                       size_t exit_index) const;
+                       std::vector<BSDF*>& bsdf_pointers,
+                       size_t exit_index);
 
   BBox bb;        ///< bounding box of the node
   BVHNode* l;     ///< left child node
@@ -136,9 +137,12 @@ class BVHAccel : public Aggregate {
   void drawOutline(const Color& c, float alpha) const { }
   void drawOutline(BVHNode *node, const Color& c, float alpha) const;
 
-  void kernel_struct(kernel_primitive_t *kernel_primitive) const { };
+  void kernel_struct(kernel_primitive_t *kernel_primitive,
+                     std::vector<BSDF*>& bsdf_pointers) { };
+
   void kernel_struct(std::vector<kernel_bvh_node_t>& kernel_bvh,
-                     std::vector<kernel_primitive_t>& kernel_primitives) const;
+                     std::vector<kernel_primitive_t>& kernel_primitives,
+                     std::vector<kernel_bsdf_t>& kernel_bsdfs);
 
   mutable unsigned long long total_rays, total_isects;
  private:

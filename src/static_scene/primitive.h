@@ -67,7 +67,8 @@ class Primitive {
   /**
    * Initialize a kernel primitive corresponding to this one.
    */
-  virtual void kernel_struct(kernel_primitive_t *kernel_primitive) const = 0;
+  virtual void kernel_struct(kernel_primitive_t *kernel_primitive,
+                             std::vector<BSDF*>& bsdf_pointers) = 0;
 };
 
 } // namespace StaticScene

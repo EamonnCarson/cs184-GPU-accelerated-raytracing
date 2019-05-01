@@ -82,7 +82,8 @@ class Sphere : public Primitive {
   */
   void drawOutline(const Color& c, float alpha) const;
 
-  void kernel_struct(kernel_primitive_t *kernel_primitive) const;
+  void kernel_struct(kernel_primitive_t *kernel_primitive,
+                     std::vector<BSDF*>& bsdf_pointers);
 
  private:
 

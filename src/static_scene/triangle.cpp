@@ -100,7 +100,8 @@ void Triangle::drawOutline(const Color& c, float alpha) const {
   glEnd();
 }
 
-void Triangle::kernel_struct(kernel_primitive_t *kernel_primitive) const {
+void Triangle::kernel_struct(kernel_primitive_t *kernel_primitive,
+                             std::vector<BSDF*>& bsdf_pointers) {
   kernel_primitive->type = KERNEL_PRIMITIVE_TYPE_TRIANGLE;
   kernel_triangle_t *kernel_triangle = &kernel_primitive->triangle;
   kernel_triangle->vertices[0] = cglVectorToKernel(mesh->positions[v1]);
@@ -109,6 +110,16 @@ void Triangle::kernel_struct(kernel_primitive_t *kernel_primitive) const {
   kernel_triangle->normals[0] = cglVectorToKernel(mesh->normals[v1], true);
   kernel_triangle->normals[1] = cglVectorToKernel(mesh->normals[v2], true);
   kernel_triangle->normals[2] = cglVectorToKernel(mesh->normals[v3], true);
+
+  uint32_t bsdf_index = distance(bsdf_pointers.begin(),
+                                 find(bsdf_pointers.begin(), bsdf_pointers.end(), get_bsdf()));
+  if (bsdf_index > bsdf_pointers.size() || bsdf_index < 0) {
+    cerr << "[Pathtracer] Error with BSDF -> device conversion" << endl;
+    throw;
+  } else if (bsdf_index == bsdf_pointers.size()) {
+    bsdf_pointers.push_back(get_bsdf());
+  }
+  kernel_triangle->bsdf_index = bsdf_index;
 }
 
 

@@ -342,19 +342,27 @@ void PathTracer::start_raytracing() {
   // Build kernel bvh/primitives array
   vector<kernel_bvh_node_t> kernelBVH;
   vector<kernel_primitive_t> kernelPrimitives;
-  bvh->kernel_struct(kernelBVH, kernelPrimitives);
+  vector<kernel_bsdf_t> kernelBSDFs;
+  bvh->kernel_struct(kernelBVH, kernelPrimitives, kernelBSDFs);
 
   // Memory allocations
   cl::Buffer outputBuffer(clContext, begin(output), end(output), false);
   cl::Buffer bvhBuffer(clContext, begin(kernelBVH), end(kernelBVH), true);
   cl::Buffer primitivesBuffer(clContext, begin(kernelPrimitives), end(kernelPrimitives), true);
+  cl::Buffer bsdfBuffer(clContext, begin(kernelBSDFs), end(kernelBSDFs), true);
 
-  pathtracePixel.setArg(0, outputBuffer);
-  pathtracePixel.setArg(1, dim);
-  pathtracePixel.setArg(2, (cl_uint) ns_aa);
-  pathtracePixel.setArg(3, camera_arg);
-  pathtracePixel.setArg(4, bvhBuffer);
-  pathtracePixel.setArg(5, primitivesBuffer);
+  uint32_t argNum = 0;
+  pathtracePixel.setArg(argNum++, outputBuffer);
+  pathtracePixel.setArg(argNum++, dim);
+  pathtracePixel.setArg(argNum++, (cl_uint) ns_aa);
+  pathtracePixel.setArg(argNum++, (cl_uint) ns_area_light);
+  pathtracePixel.setArg(argNum++, (cl_uint) max_ray_depth);
+  pathtracePixel.setArg(argNum++, camera_arg);
+  pathtracePixel.setArg(argNum++, bvhBuffer);
+  pathtracePixel.setArg(argNum++, primitivesBuffer);
+  pathtracePixel.setArg(argNum++, primitivesBuffer);
+  pathtracePixel.setArg(argNum++, (cl_uint) 0);
+  pathtracePixel.setArg(argNum++, bsdfBuffer);
   int err = commandQueue.enqueueNDRangeKernel(
       pathtracePixel,
       cl::NullRange, // TODO(PenguinToast): We can get an extra workgroup here
