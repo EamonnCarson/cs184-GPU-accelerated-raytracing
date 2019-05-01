@@ -33,7 +33,7 @@ bool intersect_triangle(ray_t *ray, global triangle_t *triangle, intersection_t 
 
   if (isect) {
     isect->t = t;
-    isect->primitive = (global primitive_t *) triangle;
+    isect->bsdf_index = triangle->bsdf_index;
     isect->n = normalize((1.f - u - v) * triangle->normals[0]
                          + u * triangle->normals[1]
                          + v * triangle->normals[2]);
@@ -65,7 +65,7 @@ bool intersect_sphere(ray_t *ray, global sphere_t *sphere, intersection_t *isect
 
   if (isect) {
     isect->t = t;
-    isect->primitive = (global primitive_t *) sphere;
+    isect->bsdf_index = sphere->bsdf_index;
     isect->n = normalize((ray->o + ray->d * t) - sphere->origin);
   }
 

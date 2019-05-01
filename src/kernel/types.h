@@ -14,10 +14,22 @@ typedef struct ray {
 
 typedef struct intersection {
   float t;
-  global primitive_t *primitive;
+  uint bsdf_index;
   float3 n;
 } intersection_t;
 
 typedef uint rand_state_t;
+
+/** Convenience struct for passing around common constants/state */
+typedef struct global_state {
+  rand_state_t *rand_state;
+  uint light_samples;
+  uint max_ray_depth;
+  global bvh_node_t *bvh;
+  global primitive_t *primitives;
+  global light_t *lights;
+  uint light_count;
+  global bsdf_t *bsdfs;
+} global_state_t;
 
 #endif // KERNEL_TYPES_H

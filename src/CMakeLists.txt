@@ -118,7 +118,9 @@ link_directories(
 # OpenCL kernel syntax checking
 #-------------------------------------------------------------------------------
 set(OPENCL_KERNEL_SOURCE
+  kernel/bsdf.h
   kernel/intersect.h
+  kernel/light.h
   kernel/pathtrace_pixel.cl
   kernel/shared_types.h
   kernel/types.h
