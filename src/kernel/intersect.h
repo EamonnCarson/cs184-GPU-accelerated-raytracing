@@ -91,9 +91,9 @@ bool intersect_bvh_bbox(ray_t *ray,
                         float *t0,
                         float *t1) {
     float tmin, tmax, tymin, tymax, tzmin, tzmax;
-    bool xsign = ray->d.x < 0;
-    bool ysign = ray->d.y < 0;
-    bool zsign = ray->d.z < 0;
+    int xsign = signbit(ray->d.x);
+    int ysign = signbit(ray->d.y);
+    int zsign = signbit(ray->d.z);
 
     tmin = (bvh_node->bounds[xsign].x - ray->o.x) / ray->d.x;
     tmax = (bvh_node->bounds[1-xsign].x - ray->o.x) / ray->d.x;
