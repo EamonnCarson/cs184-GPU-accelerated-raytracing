@@ -15,6 +15,10 @@ float rand(rand_state_t* seed) {
   return (float) (*seed) / m;
 }
 
+bool coin_flip(float p, global_state_t *globals) {
+  return rand(globals->rand_state) < p;
+}
+
 void reflect(float3 *wo, float3 *wi) {
   *wi = (float3)(-wo->x, -wo->y, wo->z);
 }
