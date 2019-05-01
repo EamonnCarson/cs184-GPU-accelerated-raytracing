@@ -82,7 +82,11 @@ PathTracer::PathTracer(size_t ns_aa,
   tm_key = 0.18;
   tm_wht = 5.0f;
 
+#ifdef DEBUG
+  init_open_cl(CL_DEVICE_TYPE_CPU);
+#else
   init_open_cl(CL_DEVICE_TYPE_GPU);
+#endif
 }
 
 PathTracer::~PathTracer() {
@@ -125,7 +129,11 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
   clContext = cl::Context(device);
   cl::Program pathtracePixelProgram = cl::Program(clContext, src);
   try {
+#ifdef DEBUG
+    pathtracePixelProgram.build("-g -I. -cl-std=CL1.2");
+#else
     pathtracePixelProgram.build("-I. -cl-std=CL1.2");
+#endif
   } catch (...) {
     // Print build info for all devices
     cl_int buildErr = CL_SUCCESS;
@@ -377,6 +385,11 @@ void PathTracer::start_raytracing() {
       cl::NDRange(sampleBuffer.w + (localSize - sampleBuffer.w % localSize),
                   sampleBuffer.h + (localSize - sampleBuffer.h % localSize)),
       cl::NDRange(localSize, localSize));
+  // int err = commandQueue.enqueueNDRangeKernel(
+  //     pathtracePixel,
+  //     cl::NullRange,
+  //     cl::NDRange(1, 1),
+  //     cl::NDRange(1, 1));
   if (err != 0) {
     cout << "[Pathtracer] Error queueing kernel: " << err << endl;
     throw 1;

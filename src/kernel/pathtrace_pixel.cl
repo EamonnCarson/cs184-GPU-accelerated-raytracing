@@ -37,7 +37,59 @@ float3 est_radiance_global_illumination(ray_t *ray,
 
   L_out += zero_bounce_radiance(ray, &isect, globals);
 
+  mat3_t o2w;
+  make_coord_space(&isect.n, &o2w);
+  mat3_t w2o = mat_transpose(&o2w);
 
+  float3 hit_p = ray->o + ray->d * isect.t;
+  float3 w_out = mat_mul(&w2o, &ray->d);
+  w_out *= -1;
+
+  for (uint light_idx = 0; light_idx < globals->light_count; light_idx++) {
+    global light_t *light = &globals->lights[light_idx];
+    uint light_samples = 1;
+    if (!light_is_delta(light)) {
+      light_samples = globals->light_samples;
+    }
+
+    float3 light_irradiance;
+    for (uint i = 0; i < light_samples; i++) {
+      float3 w_in_world;
+      float dist_to_light, pdf;
+      float3 radiance;
+      light_sample_l(light,
+                     &hit_p,
+                     &radiance,
+                     &w_in_world,
+                     &dist_to_light,
+                     &pdf,
+                     globals);
+      float3 w_in = mat_mul(&w2o, &w_in_world);
+
+      if (w_in.z < 0) {
+        continue;
+      }
+
+      ray_t shadow = (ray_t) {
+        hit_p + EPS_F * w_in_world,
+        w_in_world,
+        0.0,
+        dist_to_light
+      };
+      if (intersect_bvh(&shadow, globals->bvh, globals->primitives, 0)) {
+        continue;
+      }
+
+      float3 reflectance;
+      bsdf_f(&globals->bsdfs[isect.bsdf_index],
+             &w_out,
+             &w_in,
+             &reflectance,
+             globals);
+      light_irradiance += reflectance * radiance * fabs(w_in.z) / pdf;
+    }
+    L_out += light_irradiance / (float) light_samples;
+  }
 
   return L_out;
 }
@@ -91,5 +143,8 @@ pathtrace_pixel(global float4 *output_image,
     }
     total += est_radiance_global_illumination(&ray, &globals);
   }
-  output_image[y * dimensions.x + x] = (float4)(total / num_samples, 1);
+
+  output_image[y * dimensions.x + x] = clamp((float4)(total / num_samples, 1),
+                                             0.f + EPS_F,
+                                             1.f - EPS_F);
 }

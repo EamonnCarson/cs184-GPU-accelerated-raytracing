@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+#define EPS_F (0.00001f)
+
 float3 mat_mul(mat3_t *mat, float3 *vec) {
   return vec->x * mat->c0 + vec->y * mat->c1 + vec->z * mat->c2;
 }
@@ -15,7 +17,22 @@ mat3_t mat_transpose(mat3_t *mat) {
   };
 }
 
-void make_coord_space(mat3_t *o2w, float3 *n) {
+void make_coord_space(float3 *n, mat3_t *o2w) {
+  float3 z = n->xyz;
+  float3 h = z;
+  if (fabs(h.x) <= fabs(h.y) && fabs(h.x) <= fabs(h.z)) h.x = 1.f;
+  else if (fabs(h.y) <= fabs(h.x) && fabs(h.y) <= fabs(h.z)) h.y = 1.f;
+  else h.z = 1.f;
+
+  z = normalize(z);
+  float3 y = cross(h, z);
+  y = normalize(y);
+  float3 x = cross(z, y);
+  x = normalize(x);
+
+  o2w->c0 = x;
+  o2w->c1 = y;
+  o2w->c2 = z;
 }
 
 float rand(rand_state_t* seed) {
