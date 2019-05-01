@@ -118,10 +118,13 @@ link_directories(
 # OpenCL kernel syntax checking
 #-------------------------------------------------------------------------------
 set(OPENCL_KERNEL_SOURCE
+  kernel/pathtrace_pixel.cl
+  )
+
+set(OPENCL_KERNEL_HEADERS
   kernel/bsdf.h
   kernel/intersect.h
   kernel/light.h
-  kernel/pathtrace_pixel.cl
   kernel/sampler.h
   kernel/shared_types.h
   kernel/types.h
@@ -129,6 +132,10 @@ set(OPENCL_KERNEL_SOURCE
   )
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../kernel")
+
+FOREACH(KERNEL ${OPENCL_KERNEL_HEADERS})
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}" "${CMAKE_CURRENT_BINARY_DIR}/../${KERNEL}" COPYONLY)
+ENDFOREACH()
 
 FOREACH(KERNEL ${OPENCL_KERNEL_SOURCE})
   string(REGEX REPLACE "\\.cl" ".ll" KERNEL_IR ${KERNEL})
@@ -138,6 +145,7 @@ FOREACH(KERNEL ${OPENCL_KERNEL_SOURCE})
   add_custom_command(OUTPUT ${KERNEL_IR}
     COMMAND clang-8 -S -emit-llvm -Xclang -finclude-default-header -cl-std=CL1.2 -I${KERNEL_FOLDER} -o ${KERNEL_IR} "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
     MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}"
+    DEPENDS ${OPENCL_KERNEL_HEADERS}
     COMMENT "Checking ${KERNEL}"
     )
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL}" "${CMAKE_CURRENT_BINARY_DIR}/../${KERNEL}" COPYONLY)
