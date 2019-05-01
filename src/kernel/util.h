@@ -8,8 +8,11 @@ float3 mat_mul(mat3_t *mat, float3 *vec) {
 }
 
 mat3_t mat_transpose(mat3_t *mat) {
-  return {
-  }
+  return (mat3_t) {
+    (float3)(mat->c0.x, mat->c1.x, mat->c2.x),
+    (float3)(mat->c0.y, mat->c1.y, mat->c2.y),
+    (float3)(mat->c0.z, mat->c1.z, mat->c2.z)
+  };
 }
 
 void make_coord_space(mat3_t *o2w, float3 *n) {
