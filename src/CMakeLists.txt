@@ -122,6 +122,7 @@ set(OPENCL_KERNEL_SOURCE
   kernel/intersect.h
   kernel/light.h
   kernel/pathtrace_pixel.cl
+  kernel/sampler.h
   kernel/shared_types.h
   kernel/types.h
   kernel/util.h
