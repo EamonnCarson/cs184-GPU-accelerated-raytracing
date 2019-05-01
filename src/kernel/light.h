@@ -2,7 +2,6 @@
 #define KERNEL_LIGHT_H
 
 #include "types.h"
-#include "util.h"
 #include "sampler.h"
 
 bool light_is_delta(global light_t *light) {
