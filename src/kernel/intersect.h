@@ -1,7 +1,7 @@
 #ifndef KERNEL_INTERSECT_H
 #define KERNEL_INTERSECT_H
 
-#include "shared_types.h"
+#include "types.h"
 
 /* Intersection functions */
 

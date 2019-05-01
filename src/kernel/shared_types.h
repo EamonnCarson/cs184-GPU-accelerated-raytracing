@@ -42,19 +42,4 @@ typedef struct __attribute__ ((packed)) camera {
   mat3_t c2w;
 } camera_t;
 
-/* Structures that are private to the device */
-
-typedef struct ray {
-  float3 o;
-  float3 d;
-  float min_t;
-  float max_t;
-} ray_t;
-
-typedef struct intersection {
-  float t;
-  global primitive_t *primitive;
-  float3 n;
-} intersection_t;
-
 #endif // KERNEL_SHARED_TYPES_H

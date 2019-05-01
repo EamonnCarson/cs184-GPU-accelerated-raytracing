@@ -1,4 +1,4 @@
-#include "shared_types.h"
+#include "types.h"
 #include "util.h"
 #include "intersect.h"
 
@@ -34,9 +34,9 @@ pathtrace_pixel(global float4 *output_image,
                 global bvh_node_t *bvh,
                 global primitive_t *primitives)
 {
-  uint seed = get_global_id(1) * get_global_size(0) + get_global_id(0);
   uint x = get_global_id(0);
   uint y = get_global_id(1);
+  rand_state_t rand_state = y * get_global_size(0) + x;
   if (x >= dimensions.x || y >= dimensions.y) {
     // We might have extra work units here since we need to evenly divide total
     // units with local units.
@@ -53,8 +53,8 @@ pathtrace_pixel(global float4 *output_image,
                    &ray);
     } else {
       generate_ray(&camera,
-                   (x + rand(&seed)) / dimensions.x,
-                   (y + rand(&seed)) / dimensions.y,
+                   (x + rand(&rand_state)) / dimensions.x,
+                   (y + rand(&rand_state)) / dimensions.y,
                    &ray);
     }
     total += est_radiance_global_illumination(&ray, bvh, primitives);
