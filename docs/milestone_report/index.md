@@ -1,11 +1,11 @@
 # CS 184: Computer Graphics and Imaging, Spring 2019
-## Final Project Milestone Report: GPU Accelerated Raytracing
+## Final Project Milestone Report: GPU Accelerated Pathtracing
 ###### Authors: William Sheu, Eric Zhou, Eamonn Carson
 
 ## Current Accomplishments
 Currently we have ported the basic engine of project 3-2 over to the OpenCL framework.
 Specifically, we have:
-1. Set up our OpenCL libraries and gotten our code to work on Ubuntu and Windows (OpenCL is deprecated in OSX and isn't compiling properly, so we have abandoned OSX compatibility for now)
+1. Set up our OpenCL libraries and gotten our code to work on Ubuntu and Windows (OpenCL is deprecated in OSX and isn't compiling properly, so we have abandoned OSX compatibility for now) with both Intel and NVIDIA graphics chips.
 2. Implemented basic raytracing for triangles and spheres. There is no lighting implemented yet, so we just display the value of the surface normal at the intersection for each pixel.
 3. Implemented traversal of a bounding volume hierarchy on GPU. We considered this a necessary component in order to compete with CPU based raytracing methods. BVH construction was kept on the CPU, but we needed to flatten the BVH so that it would be laid out contiguously in mermory in order to interface with the OpenCl kernel.
 

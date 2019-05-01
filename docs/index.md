@@ -1,5 +1,5 @@
 # CS 184: Computer Graphics and Imaging, Spring 2019
-## Final Project: GPU Accelerated Raytracing
+## Final Project: GPU Accelerated Pathtracing
 ###### Authors: William Sheu, Eric Zhou, Eamonn Carson
 
 ## Milestone Report Link
