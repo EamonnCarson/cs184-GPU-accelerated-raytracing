@@ -412,6 +412,7 @@ void PathTracer::start_raytracing() {
     }
   }
   sampleBuffer.toColor(frameBuffer, 0, 0, sampleBuffer.w, sampleBuffer.h);
+  state = DONE;
 }
 
 void PathTracer::render_to_file(string filename, size_t x, size_t y, size_t dx, size_t dy) {
