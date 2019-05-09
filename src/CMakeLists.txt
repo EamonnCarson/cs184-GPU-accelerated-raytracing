@@ -102,6 +102,7 @@ include_directories(
   ${GLFW_INCLUDE_DIRS}
   ${CGL_INCLUDE_DIRS}
   ${FREETYPE_INCLUDE_DIRS}
+  ${OpenCL_INCLUDE_DIRS}
 )
 
 #-------------------------------------------------------------------------------
@@ -112,6 +113,7 @@ link_directories(
   ${GLFW_LIBRARY_DIRS}
   ${CGL_LIBRARY_DIRS}
   ${FREETYPE_LIBRARY_DIRS}
+  ${OpenCL_LIBRARY}
 )
 
 #-------------------------------------------------------------------------------
@@ -166,7 +168,7 @@ target_link_libraries( pathtracer
   ${OPENGL_LIBRARIES}
   ${FREETYPE_LIBRARIES}
   ${CMAKE_THREADS_INIT}
-  OpenCL::OpenCL
+  OpenCL ${OpenCL_LIBRARY}
   )
 
 #-------------------------------------------------------------------------------

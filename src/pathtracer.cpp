@@ -83,8 +83,10 @@ PathTracer::PathTracer(size_t ns_aa,
   tm_wht = 5.0f;
 
 #ifdef DEBUG
+  //CPU
   init_open_cl(CL_DEVICE_TYPE_CPU);
 #else
+  //GPU
   init_open_cl(CL_DEVICE_TYPE_GPU);
 #endif
 }
@@ -129,6 +131,7 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
   clContext = cl::Context(device);
   cl::Program pathtracePixelProgram = cl::Program(clContext, src);
   try {
+    pathtracePixelProgram.build("-I. -cl-std=CL1.2");
 #ifdef DEBUG
     pathtracePixelProgram.build("-g -I. -cl-std=CL1.2");
 #else
