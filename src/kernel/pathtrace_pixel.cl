@@ -52,7 +52,7 @@ float3 est_radiance_global_illumination(ray_t *ray,
       light_samples = globals->light_samples;
     }
 
-    float3 light_irradiance;
+    float3 light_irradiance = (float3)(0, 0, 0);
     for (uint i = 0; i < light_samples; i++) {
       float3 w_in_world;
       float dist_to_light, pdf;
@@ -95,7 +95,7 @@ float3 est_radiance_global_illumination(ray_t *ray,
 }
 
 kernel void
-pathtrace_pixel(global float4 *output_image,
+pathtrace_pixel(global float3 *output_image,
                 uint2 dimensions,
                 uint num_samples,
                 uint light_samples,
@@ -105,17 +105,14 @@ pathtrace_pixel(global float4 *output_image,
                 global primitive_t *primitives,
                 global light_t *lights,
                 uint light_count,
-                global bsdf_t *bsdfs)
+                global bsdf_t *bsdfs,
+                local float3 *local_samples)
 {
-  uint x = get_global_id(0);
-  uint y = get_global_id(1);
-  if (x >= dimensions.x || y >= dimensions.y) {
-    // We might have extra work units here since we need to evenly divide total
-    // units with local units.
-    return;
-  }
+  uint x = get_global_id(0) + get_global_offset(0);
+  uint y = get_global_id(1) + get_global_offset(1);
+  uint z = get_global_id(2) + get_global_offset(2);
 
-  rand_state_t rand_state = y * get_global_size(0) + x;
+  rand_state_t rand_state = (y * get_global_size(0) + x) * get_global_size(2) + z;
   global_state_t globals = {
     &rand_state,
     light_samples,
@@ -127,24 +124,49 @@ pathtrace_pixel(global float4 *output_image,
     bsdfs
   };
 
-  float3 total = (float3)(0, 0, 0);
-  for (int i = 0; i < num_samples; i++) {
-    ray_t ray;
-    if (num_samples == 1) {
-      generate_ray(&camera,
-                   (x + 0.5f) / dimensions.x,
-                   (y + 0.5f) / dimensions.y,
-                   &ray);
-    } else {
-      generate_ray(&camera,
-                   (x + rand(&rand_state)) / dimensions.x,
-                   (y + rand(&rand_state)) / dimensions.y,
-                   &ray);
-    }
-    total += est_radiance_global_illumination(&ray, &globals);
+  ray_t ray;
+  if (num_samples == 1) {
+    generate_ray(&camera,
+                 (x + 0.5f) / dimensions.x,
+                 (y + 0.5f) / dimensions.y,
+                 &ray);
+  } else {
+    generate_ray(&camera,
+                 (x + rand(&rand_state)) / dimensions.x,
+                 (y + rand(&rand_state)) / dimensions.y,
+                 &ray);
+  }
+  float3 sample = est_radiance_global_illumination(&ray, &globals);
+
+  // local float3 samples[get_local_size(1)][get_local_size(0)][get_local_size(2)];
+  size_t lx = get_local_id(0);
+  size_t ly = get_local_id(1);
+  size_t lz = get_local_id(2);
+  size_t local_sample_index = (ly * get_local_size(0) + lx) * get_local_size(2) + lz;
+  local_samples[local_sample_index] = sample / num_samples;
+
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  if (x >= dimensions.x || y >= dimensions.y || z >= num_samples) {
+    // We might have extra work units here since we need to evenly divide total
+    // units with local units.
+    return;
   }
 
-  output_image[y * dimensions.x + x] = clamp((float4)(total / num_samples, 1),
-                                             0.f + EPS_F,
-                                             1.f - EPS_F);
+  if (lz == 0) {
+    float3 total_samples = (float3)(0, 0, 0);
+    for (size_t sample = 0; sample < get_local_size(2); sample++) {
+      if (lz + sample >= num_samples) {
+        break;
+      }
+      total_samples += local_samples[local_sample_index + sample];
+    }
+
+    size_t max_sample_depth = (size_t) ceil((float) num_samples / get_local_size(2));
+    size_t sample_depth = z / get_local_size(2);
+    size_t output_index = (y * dimensions.x + x) * max_sample_depth + sample_depth;
+    output_image[output_index] = clamp(total_samples,
+                                       0.f,
+                                       1.f);
+  }
 }

@@ -97,6 +97,11 @@ PathTracer::~PathTracer() {
 
 }
 
+static void handleContextError(const char *errinfo, const void *private_info, size_t cb, void *user)  {
+  cerr << "Error: " << errinfo << endl;
+  throw 1;
+}
+
 void PathTracer::init_open_cl(cl_device_type device_type) {
   // TODO(PenguinToast): Do proper error handling (throw an exception)
   setenv("CUDA_CACHE_DISABLE", "1", 1);
@@ -126,26 +131,40 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
 
   // Create kernel program
   const char* src = "#include \"kernel/pathtrace_pixel.cl\"";
-  clContext = cl::Context(device);
+  int err = 0;
+  clContext = cl::Context(
+      device,
+      NULL,
+      &handleContextError,
+      NULL,
+      &err);
+  if (err != 0) {
+    cerr << "[PathTracer] Error creating context: " << err << endl;
+  }
   cl::Program pathtracePixelProgram = cl::Program(clContext, src);
   try {
 #ifdef DEBUG
     pathtracePixelProgram.build("-g -I. -cl-std=CL1.2");
 #else
-    pathtracePixelProgram.build("-I. -cl-std=CL1.2");
+    err = pathtracePixelProgram.build("-I. -cl-std=CL1.2");
+    if (err != 0) {
+      cerr << "[PathTracer] Error building kernel: " << err << endl;
+      throw 1;
+    }
 #endif
   } catch (...) {
     // Print build info for all devices
     cl_int buildErr = CL_SUCCESS;
     auto buildInfo = pathtracePixelProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device, &buildErr);
-    for (auto &pair : buildInfo) {
-      cerr << pair << endl << endl;
-    }
+    cerr << "[PathTracer] Error building kernel: " << buildInfo << endl;
     throw 1;
   }
   cout << "[PathTracer] Built OpenCL Kernel" << endl;
 
-  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtrace_pixel");
+  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtrace_pixel", &err);
+  if (err != 0) {
+    cerr << "[PathTracer] Error creating kernel: " << err << endl;
+  }
 }
 
 void PathTracer::set_scene(Scene *scene) {
@@ -338,11 +357,14 @@ void PathTracer::start_raytracing() {
 
   cl::CommandQueue commandQueue(clContext);
 
-  const int localSize = 8;
+  const int localSize = 4;
+  const int localSamples = 32;
+
+  const int maxLocalSamples = (int) ceil((float) ns_aa / localSamples);
 
   // Set up arguments
 
-  vector<cl_float4> output(sampleBuffer.w * sampleBuffer.h, cl_float4());
+  vector<cl_float3> output(sampleBuffer.w * sampleBuffer.h * maxLocalSamples, cl_float3());
   cl_uint2 dim = {(cl_uint) sampleBuffer.w, (cl_uint) sampleBuffer.h};
   kernel_camera_t camera_arg;
   camera->kernel_struct(&camera_arg);
@@ -379,12 +401,17 @@ void PathTracer::start_raytracing() {
   pathtracePixel.setArg(argNum++, lightBuffer);
   pathtracePixel.setArg(argNum++, (cl_uint) kernelLights.size());
   pathtracePixel.setArg(argNum++, bsdfBuffer);
+  pathtracePixel.setArg(argNum++, localSize * localSize * localSamples * sizeof(cl_float3), NULL);
+
+  timer.start();
+
   int err = commandQueue.enqueueNDRangeKernel(
       pathtracePixel,
       cl::NullRange, // TODO(PenguinToast): We can get an extra workgroup here
       cl::NDRange(sampleBuffer.w + (localSize - sampleBuffer.w % localSize),
-                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize)),
-      cl::NDRange(localSize, localSize));
+                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize),
+                  maxLocalSamples * localSamples),
+      cl::NDRange(localSize, localSize, localSamples));
   // int err = commandQueue.enqueueNDRangeKernel(
   //     pathtracePixel,
   //     cl::NullRange,
@@ -395,8 +422,13 @@ void PathTracer::start_raytracing() {
     throw 1;
   }
   cout << "[PathTracer] Queued kernel" << endl;
-  commandQueue.finish();
-  cout << "[PathTracer] Kernel finished" << endl;
+  err = commandQueue.finish();
+  if (err != 0) {
+    cout << "[Pathtracer] Error finishing kernel: " << err << endl;
+    throw 1;
+  }
+  timer.stop();
+  printf("[PathTracer] Kernel finished: (%.4fs)\n", timer.duration());
   err = cl::copy(commandQueue, outputBuffer, begin(output), end(output));
   if (err != 0) {
     cout << "[Pathtracer] Error reading output buffer: " << err << endl;
@@ -404,11 +436,17 @@ void PathTracer::start_raytracing() {
   }
   for (int y = 0; y < sampleBuffer.h; y++) {
     for (int x = 0; x < sampleBuffer.w; x++) {
-      cl_float4 color = output[y * sampleBuffer.w + x];
-      sampleBuffer.update_pixel(Spectrum(color.s0, color.s1, color.s2), x, y);
+      Spectrum total;
+      for (int s = 0; s < maxLocalSamples; s++) {
+        cl_float3 sample = output[(y * sampleBuffer.w + x) * maxLocalSamples + s];
+        total += Spectrum(sample.s0, sample.s1, sample.s2);
+      }
+      sampleBuffer.update_pixel(total, x, y);
     }
   }
   sampleBuffer.toColor(frameBuffer, 0, 0, sampleBuffer.w, sampleBuffer.h);
+
+  state = DONE;
 }
 
 void PathTracer::render_to_file(string filename, size_t x, size_t y, size_t dx, size_t dy) {
