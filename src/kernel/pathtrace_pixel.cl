@@ -27,23 +27,13 @@ float3 zero_bounce_radiance(ray_t *ray,
   return radiance;
 }
 
-float3 est_radiance_global_illumination(ray_t *ray,
-                                        global_state_t *globals) {
-  intersection_t isect;
+float3 one_bounce_radiance(ray_t *ray,
+                           intersection_t *isect,
+                           mat3_t *w2o,
+                           float3 *hit_p,
+                           float3 *w_out,
+                           global_state_t *globals) {
   float3 L_out = (float3)(0, 0, 0);
-  if (!intersect_bvh(ray, globals->bvh, globals->primitives, &isect)) {
-    return L_out;
-  }
-
-  L_out += zero_bounce_radiance(ray, &isect, globals);
-
-  mat3_t o2w;
-  make_coord_space(&isect.n, &o2w);
-  mat3_t w2o = mat_transpose(&o2w);
-
-  float3 hit_p = ray->o + ray->d * isect.t;
-  float3 w_out = mat_mul(&w2o, &ray->d);
-  w_out *= -1;
 
   for (uint light_idx = 0; light_idx < globals->light_count; light_idx++) {
     global light_t *light = &globals->lights[light_idx];
@@ -58,20 +48,20 @@ float3 est_radiance_global_illumination(ray_t *ray,
       float dist_to_light, pdf;
       float3 radiance;
       light_sample_l(light,
-                     &hit_p,
+                     hit_p,
                      &radiance,
                      &w_in_world,
                      &dist_to_light,
                      &pdf,
                      globals);
-      float3 w_in = mat_mul(&w2o, &w_in_world);
+      float3 w_in = mat_mul(w2o, &w_in_world);
 
       if (w_in.z < 0) {
         continue;
       }
 
       ray_t shadow = (ray_t) {
-        hit_p + EPS_F * w_in_world,
+        *hit_p + EPS_F * w_in_world,
         w_in_world,
         0.0,
         dist_to_light
@@ -81,14 +71,72 @@ float3 est_radiance_global_illumination(ray_t *ray,
       }
 
       float3 reflectance;
-      bsdf_f(&globals->bsdfs[isect.bsdf_index],
-             &w_out,
+      bsdf_f(&globals->bsdfs[isect->bsdf_index],
+             w_out,
              &w_in,
              &reflectance,
              globals);
       light_irradiance += reflectance * radiance * fabs(w_in.z) / pdf;
     }
     L_out += light_irradiance / (float) light_samples;
+  }
+
+  return L_out;
+}
+
+float3 est_radiance_global_illumination(ray_t *ray,
+                                        global_state_t *globals) {
+  intersection_t isect;
+  float3 L_out = (float3)(0, 0, 0);
+  if (!intersect_bvh(ray, globals->bvh, globals->primitives, &isect)) {
+    return L_out;
+  }
+
+  L_out += zero_bounce_radiance(ray, &isect, globals);
+
+  float3 mult = (float3)(1, 1, 1);
+  for (int depth = 0; depth < globals->max_ray_depth; depth++) {
+    mat3_t o2w;
+    make_coord_space(&isect.n, &o2w);
+    mat3_t w2o = mat_transpose(&o2w);
+
+    float3 hit_p = ray->o + ray->d * isect.t;
+    float3 w_out = mat_mul(&w2o, &ray->d);
+    w_out *= -1;
+
+    if (!bsdf_is_delta(&globals->bsdfs[isect.bsdf_index])) {
+      L_out += one_bounce_radiance(ray, &isect, &w2o, &hit_p, &w_out, globals) * mult;
+    }
+
+    float3 w_in;
+    float pdf;
+    float3 reflectance;
+    bsdf_sample_f(&globals->bsdfs[isect.bsdf_index],
+                  &w_out,
+                  &reflectance,
+                  &w_in,
+                  &pdf,
+                  globals);
+    if (pdf <= 0) {
+      break;
+    }
+
+    float3 w_in_world = mat_mul(&o2w, &w_in);
+    *ray = (ray_t) {
+      hit_p + EPS_F * w_in_world,
+      w_in_world,
+      0.0,
+      INFINITY
+    };
+    uint old_bsdf_index = isect.bsdf_index;
+    if (!intersect_bvh(ray, globals->bvh, globals->primitives, &isect)) {
+      break;
+    }
+
+    mult *= reflectance * fabs(w_in.z) / pdf;
+    if (bsdf_is_delta(&globals->bsdfs[old_bsdf_index])) {
+      L_out += zero_bounce_radiance(ray, &isect, globals) * mult;
+    }
   }
 
   return L_out;
