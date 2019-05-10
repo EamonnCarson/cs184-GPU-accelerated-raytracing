@@ -142,8 +142,8 @@ void bsdf_f(global bsdf_t *bsdf,
 
 void bsdf_sample_f(global bsdf_t *bsdf,
                    float3 *wo,
-                   float3 *reflectance,
                    float3 *wi,
+                   float3 *reflectance,
                    float *pdf,
                    global_state_t *globals) {
   switch (bsdf->type) {

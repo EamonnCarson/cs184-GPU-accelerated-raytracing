@@ -120,7 +120,7 @@ link_directories(
 # OpenCL kernel syntax checking
 #-------------------------------------------------------------------------------
 set(OPENCL_KERNEL_SOURCE
-  kernel/pathtrace_pixel.cl
+  kernel/pathtrace_sample.cl
   )
 
 set(OPENCL_KERNEL_HEADERS

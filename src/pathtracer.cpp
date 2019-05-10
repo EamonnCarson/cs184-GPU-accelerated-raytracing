@@ -127,7 +127,7 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
   }
 
   // Create kernel program
-  const char* src = "#include \"kernel/pathtrace_pixel.cl\"";
+  const char* src = "#include \"kernel/pathtrace_sample.cl\"";
   clContext = cl::Context(device);
   cl::Program pathtracePixelProgram = cl::Program(clContext, src);
   try {
@@ -148,7 +148,7 @@ void PathTracer::init_open_cl(cl_device_type device_type) {
   }
   cout << "[PathTracer] Built OpenCL Kernel" << endl;
 
-  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtrace_pixel");
+  pathtracePixel = cl::Kernel(pathtracePixelProgram, "pathtrace_sample");
 }
 
 void PathTracer::set_scene(Scene *scene) {
@@ -345,7 +345,7 @@ void PathTracer::start_raytracing() {
 
   // Set up arguments
 
-  vector<cl_float4> output(sampleBuffer.w * sampleBuffer.h, cl_float4());
+  vector<cl_float4> output(sampleBuffer.w * sampleBuffer.h * ns_aa, cl_float4());
   cl_uint2 dim = {(cl_uint) sampleBuffer.w, (cl_uint) sampleBuffer.h};
   kernel_camera_t camera_arg;
   camera->kernel_struct(&camera_arg);
@@ -386,8 +386,9 @@ void PathTracer::start_raytracing() {
       pathtracePixel,
       cl::NullRange, // TODO(PenguinToast): We can get an extra workgroup here
       cl::NDRange(sampleBuffer.w + (localSize - sampleBuffer.w % localSize),
-                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize)),
-      cl::NDRange(localSize, localSize));
+                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize),
+                  ns_aa),
+      cl::NDRange(localSize, localSize, localSize));
   // int err = commandQueue.enqueueNDRangeKernel(
   //     pathtracePixel,
   //     cl::NullRange,
@@ -407,8 +408,13 @@ void PathTracer::start_raytracing() {
   }
   for (int y = 0; y < sampleBuffer.h; y++) {
     for (int x = 0; x < sampleBuffer.w; x++) {
-      cl_float4 color = output[y * sampleBuffer.w + x];
-      sampleBuffer.update_pixel(Spectrum(color.s0, color.s1, color.s2), x, y);
+      Spectrum spec(0, 0, 0);
+      for (int sample_id = 0; sample_id < ns_aa; sample_id++) {
+        int index = sample_id * sampleBuffer.h * sampleBuffer.w + y * sampleBuffer.w + x;
+        cl_float4 color = output[index];
+        spec += Spectrum(color.s0, color.s1, color.s2);
+      }
+      sampleBuffer.update_pixel(spec / ns_aa, x, y);
     }
   }
   sampleBuffer.toColor(frameBuffer, 0, 0, sampleBuffer.w, sampleBuffer.h);

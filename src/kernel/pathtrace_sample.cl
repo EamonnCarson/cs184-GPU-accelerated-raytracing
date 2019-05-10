@@ -28,13 +28,19 @@ float3 zero_bounce_radiance(ray_t *ray,
 }
 
 float3 est_radiance_global_illumination(ray_t *ray,
+                                        float3 *mult,
                                         global_state_t *globals) {
+  /* takes in a ray and the set of globals
+   * outputs a float3 representing light reflected back through ray
+   * and also changes ray to be a bounce direction (for raytracing)
+   * and also outputs mult as a multiplier for the next bounce
+   */
+ 
   intersection_t isect;
   float3 L_out = (float3)(0, 0, 0);
   if (!intersect_bvh(ray, globals->bvh, globals->primitives, &isect)) {
     return L_out;
   }
-
   L_out += zero_bounce_radiance(ray, &isect, globals);
 
   mat3_t o2w;
@@ -45,6 +51,7 @@ float3 est_radiance_global_illumination(ray_t *ray,
   float3 w_out = mat_mul(&w2o, &ray->d);
   w_out *= -1;
 
+  // estimate direct lighting effect
   for (uint light_idx = 0; light_idx < globals->light_count; light_idx++) {
     global light_t *light = &globals->lights[light_idx];
     uint light_samples = 1;
@@ -52,7 +59,7 @@ float3 est_radiance_global_illumination(ray_t *ray,
       light_samples = globals->light_samples;
     }
 
-    float3 light_irradiance;
+    float3 light_irradiance = (float3)(0, 0, 0);
     for (uint i = 0; i < light_samples; i++) {
       float3 w_in_world;
       float dist_to_light, pdf;
@@ -91,32 +98,48 @@ float3 est_radiance_global_illumination(ray_t *ray,
     L_out += light_irradiance / (float) light_samples;
   }
 
+  // make a new ray for the bounce direction
+  float3 w_in;
+  float3 reflectance;
+  float pdf;
+  bsdf_sample_f(&globals->bsdfs[isect.bsdf_index],
+                &w_out,
+                &w_in,
+                &reflectance,
+                &pdf,
+                globals);
+  ray->d = mat_mul(&o2w, &w_in);
+  ray->o = EPS_F * ray->d + hit_p;
+  *mult = reflectance * w_in.z / pdf;
+
   return L_out;
 }
 
 kernel void
-pathtrace_pixel(global float4 *output_image,
-                uint2 dimensions,
-                uint num_samples,
-                uint light_samples,
-                uint max_ray_depth,
-                camera_t camera,
-                global bvh_node_t *bvh,
-                global primitive_t *primitives,
-                global light_t *lights,
-                uint light_count,
-                global bsdf_t *bsdfs)
+pathtrace_sample(global float4 *output_image,
+                  uint2 dimensions,
+                  uint num_samples,
+                  uint light_samples,
+                  uint max_ray_depth,
+                  camera_t camera,
+                  global bvh_node_t *bvh,
+                  global primitive_t *primitives,
+                  global light_t *lights,
+                  uint light_count,
+                  global bsdf_t *bsdfs)
 {
   uint x = get_global_id(0);
   uint y = get_global_id(1);
   uint sample_id = get_global_id(2);
-  if (x >= dimensions.x || y >= dimensions.y || sample_id >= num_samples) {
+
+  if (x >= dimensions.x || y >= dimensions.y) {
     // We might have extra work units here since we need to evenly divide total
     // units with local units.
     return;
   }
 
-  rand_state_t rand_state = y * get_global_size(0) + x;
+  rand_state_t rand_state = x + get_global_size(0) * y;
+  rand_state = rand_state + sample_id * get_global_size(0) * get_global_size(1);
   global_state_t globals = {
     &rand_state,
     light_samples,
@@ -129,22 +152,31 @@ pathtrace_pixel(global float4 *output_image,
   };
 
   float3 total = (float3)(0, 0, 0);
-  for (int i = 0; i < num_samples; i++) {
-    ray_t ray;
-    if (num_samples == 1) {
-      generate_ray(&camera,
-                   (x + 0.5f) / dimensions.x,
-                   (y + 0.5f) / dimensions.y,
-                   &ray);
-    } else {
-      generate_ray(&camera,
-                   (x + rand(&rand_state)) / dimensions.x,
-                   (y + rand(&rand_state)) / dimensions.y,
-                   &ray);
-    }
-    total += est_radiance_global_illumination(&ray, &globals);
+  ray_t ray;
+  generate_ray(&camera,
+               (x + rand(&rand_state)) / dimensions.x,
+               (y + rand(&rand_state)) / dimensions.y,
+               &ray);
+  
+  float3 mult = (float3)(1, 1, 1);
+  for (uint depth = 0; depth < max_ray_depth; depth++) {
+    float3 new_mult;
+    // note that est_radiance_global_illumination auto updates the ray
+    float3 L_in = est_radiance_global_illumination(&ray, &new_mult, &globals);
+    total += mult * L_in;
+    mult *= new_mult;
   }
+  /*
+  float3 new_mult;
+  float3 L_in = est_radiance_global_illumination(&ray, &new_mult, &globals);
+  total += mult * L_in;
+  mult *= new_mult;
+  L_in = est_radiance_global_illumination(&ray, &new_mult, &globals);
+  total += mult * L_in;
+  mult *= new_mult;
+  */
+
 
   uint index = sample_id * dimensions.x * dimensions.y + y * dimensions.x + x;
-  output_image[index] = clamp((float4)(total, 1), 0.f + EPS_F, 1.f - EPS_F);
+  output_image[index] = clamp((float4)(total, 1), 0.f, 1.f);
 }
