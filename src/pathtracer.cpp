@@ -370,6 +370,8 @@ void PathTracer::start_raytracing() {
   cl::Buffer lightBuffer(clContext, begin(kernelLights), end(kernelLights), true);
   cl::Buffer bsdfBuffer(clContext, begin(kernelBSDFs), end(kernelBSDFs), true);
 
+  uint32_t sample_w = sampleBuffer.w * ns_aa;
+
   uint32_t argNum = 0;
   pathtracePixel.setArg(argNum++, outputBuffer);
   pathtracePixel.setArg(argNum++, dim);
@@ -385,10 +387,9 @@ void PathTracer::start_raytracing() {
   int err = commandQueue.enqueueNDRangeKernel(
       pathtracePixel,
       cl::NullRange, // TODO(PenguinToast): We can get an extra workgroup here
-      cl::NDRange(sampleBuffer.w + (localSize - sampleBuffer.w % localSize),
-                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize),
-                  ns_aa),
-      cl::NDRange(localSize, localSize, 1));
+      cl::NDRange(sample_w + (localSize - sample_w % localSize),
+                  sampleBuffer.h + (localSize - sampleBuffer.h % localSize)),
+      cl::NDRange(localSize, localSize));
   // int err = commandQueue.enqueueNDRangeKernel(
   //     pathtracePixel,
   //     cl::NullRange,
@@ -410,7 +411,7 @@ void PathTracer::start_raytracing() {
     for (int x = 0; x < sampleBuffer.w; x++) {
       Spectrum spec(0, 0, 0);
       for (int sample_id = 0; sample_id < ns_aa; sample_id++) {
-        int index = sample_id * sampleBuffer.h * sampleBuffer.w + y * sampleBuffer.w + x;
+        int index = x * ns_aa + sample_w * y + sample_id;
         cl_float4 color = output[index];
         spec += Spectrum(color.s0, color.s1, color.s2);
       }

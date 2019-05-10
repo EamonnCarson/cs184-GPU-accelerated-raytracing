@@ -128,18 +128,18 @@ pathtrace_sample(global float4 *output_image,
                   uint light_count,
                   global bsdf_t *bsdfs)
 {
-  uint x = get_global_id(0);
-  uint y = get_global_id(1);
-  uint sample_id = get_global_id(2);
+  uint sample_x = get_global_id(0);
+  uint sample_y = get_global_id(1);
 
-  if (x >= dimensions.x || y >= dimensions.y) {
+  if (sample_x >= dimensions.x * num_samples || sample_y >= dimensions.y) {
     // We might have extra work units here since we need to evenly divide total
     // units with local units.
     return;
   }
+  uint x = sample_x / num_samples;
+  uint y = sample_y;
 
-  rand_state_t rand_state = x + get_global_size(0) * y;
-  rand_state = rand_state + sample_id * get_global_size(0) * get_global_size(1);
+  rand_state_t rand_state = sample_x + get_global_size(0) * sample_y;
   global_state_t globals = {
     &rand_state,
     light_samples,
@@ -177,6 +177,6 @@ pathtrace_sample(global float4 *output_image,
   */
 
 
-  uint index = sample_id * dimensions.x * dimensions.y + y * dimensions.x + x;
+  uint index = sample_x + sample_y * dimensions.x * num_samples;
   output_image[index] = clamp((float4)(total, 1), 0.f, 1.f);
 }
