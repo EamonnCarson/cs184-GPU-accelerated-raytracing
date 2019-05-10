@@ -388,7 +388,7 @@ void PathTracer::start_raytracing() {
       cl::NDRange(sampleBuffer.w + (localSize - sampleBuffer.w % localSize),
                   sampleBuffer.h + (localSize - sampleBuffer.h % localSize),
                   ns_aa),
-      cl::NDRange(localSize, localSize, localSize));
+      cl::NDRange(localSize, localSize, 1));
   // int err = commandQueue.enqueueNDRangeKernel(
   //     pathtracePixel,
   //     cl::NullRange,
