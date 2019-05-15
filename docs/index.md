@@ -1,6 +1,6 @@
-# CS 184: Computer Graphics and Imaging, Spring 2019
 ## Final Project: GPU Accelerated Pathtracing
-###### Authors: William Sheu, Eric Zhou, Eamonn Carson
+#### Authors: William Sheu, Eric Zhou, Eamonn Carson
+#### CS 184: Computer Graphics and Imaging, Spring 2019
 
 ## Final Report Video Link
 [Click here to see our final video presentation](https://www.youtube.com/watch?v=v59Jgd8jITQ&feature=youtu.be)
@@ -13,7 +13,8 @@
 
 
 ## Abstract
-###### (A paragraph summary of the entire project.)
+
+[//]: # (A paragraph summary of the entire project.)
     
 Our project was to accelerate ray-tracing utilizing the GPU to take advantage of the embarassingly parallel computations of individual rays.
 Each computation of the contribution of each sampled ray to the final image is independent from all others, so we can sample each ray in parallel on the GPU.
@@ -21,19 +22,24 @@ This parallelization is important because it represents an avenue of optimizatio
 Overall we found that our relatively unoptimized GPU-accelerated raytracing implementation significantly outperforms basic CPU ray-tracing implementations by up to 20x (e.g. project 3-2) on simple scenes without sacrificing render quality. 
 
 ## Technical approach
-###### (A 1-2 page summary of your technical approach, techniques used, algorithms implemented, etc. (use references to papers or other resources for further detail). Highlight how your approach varied from the references used (did you implement a subset, or did you change or enhance anything), the unique decisions you made and why.)
+
+[//]: # (A 1-2 page summary of your technical approach, techniques used, algorithms implemented, etc. use references to papers or other resources for further detail. Highlight how your approach varied from the references used did you implement a subset, or did you change or enhance anything, the unique decisions you made and why.) 
 
 ### A note about resources
 The instructions for this section say to go over what resources and papers we referenced in order to build this and how we differed from their strategies. Overall we did not reference any real resources other than project 3-2 and the OpenCL documentation.
 Our implementation for this project does not radically differ from the implementation of project 3-2 (the process and architecture are generally the same, just implemented using kernels and OpenCL).
 
 There are a couple algorithmic differences though. 
+
 First, since kernels cannot communicate between eachother, adaptive sampling was axed, since that would require that we do sequential processing of each sample. Technically since our final product parallelizes by pixel this could be achieved, but our goal was to have one kernel per traced ray which would render this strategy impossible, so we did not implement adaptive sampling.
+
 Second, we decided not to use russian roulette because we felt that it would be ineffective. With kernels since they run in parallel (generally with single-instruction-multiple-data SIMD) the runtime of the kernel is going to be the runtime of the longest kernel in the same batch. Russian roulette is effective because it allows you to short-circuit some computations while still keeping your estimator of the amount of light unbiased.
+
 In our case since the length of a set of runs is dictated by the length of the longest run, short-circuiting does not reduce the runtime as much. we felt that keeping the branching factor down by not including short-circuiting would probably lead to more efficient code than implementing short-circuiting.
 
 ### Why OpenCL?
 Among the suggested options for this project was implementing GPU-accelerated ray-tracing using the NVIDIA OptiX library; however, we decided that we wanted our ray-tracer to be truly cross platform so instead we decided to implement the ray-tracer in OpenCL. 
+
 Overall we were able to mostly achieve our goal, and got our program to compile properly on Ubuntu and Windows. We did not make this program OSX compatible, becuase we learned after starting that OSX had deprecated OpenCL in favor of Metal and OSX was being obtuse in general.
 
 ### Overall approach
@@ -79,6 +85,7 @@ Note that we have to keep track of running multiplier for the contribution of ea
 To elaborate on the construction and access procedures of the BVH, there are two major changes: first, since we only can really transfer arrays we need to 'flatten' our BVH into an array, and second — since kernels are not allowed to perform recursion — we must simulate recursion using a for loop to access elements and perform intersections. 
 As for the array necessity, we just represent the BVH as a flat array of BVH nodes each of which has variables that indicate their children and whether or not they are a leaf node and store in the leaf node an array of primitives. 
 The more annoying aspect is the fact that we cannot use recursion, which means that we have to manually keep track of the 'next' node to go to in the recursion and how to backtrack to the parent node. 
+
 We solved this by encoding the recursion strategy directly in the BVH tree itself: each BVH node has an exit node (which is its parent's right child (if it is a left child), or its grandparent's right child (if it is a right child)) and an entrance node (which is its left child if it is not a leaf node, and which is equal to its exit node if it is a leaf node). By following the entry node while the ray intersects the current node and following the exit node when it doesn't we get
 pattern we need to properly do an intersection test with the BVH. See our code for more details.
 
@@ -88,7 +95,8 @@ There were a couple of features that we originally intended to include, but foun
 
 Additionally, there are a few problems that we were unable to solve completely. First, for some reason our renders are darker than the baseline CPU renders. If you increase the brightness of the renders by about 40% they look fine though. Second, it turns out that a lot of systems limit the lifetime of a kernel on the GPU (e.g. Windows has WDDR TDW); this causes our program to crash since the GPU kernels don't return anything before they are prematurely killed. We have not come up with a fix for this within our codebase, although many systems have the option to turn these settings off via system panels. The consequence of the watchdog killing kernels is that our program will crash if sufficiently high-quality settings (-s 64 -l 32 on the hive machines) are passed in.
 
-###### A description of problems encountered and how you tackled them.
+[//]: # (A description of problems encountered and how you tackled them.)
+
 ## Problems encountered
 We were faced with a few problems that stoppered our progress significantly along the way.
 
@@ -103,7 +111,8 @@ Third, because we just haphazardly placed our code into the project 3-2 framewor
 
 Also in general we ran into some bugs with our implementations (multiple bounces looking horrible, excessive noise, etc); and although this solution isn't scaleable we generally solved the issues by getting one of our partners to independently reimplement the code and then combining the good parts of each.
 
-###### A description of lessons learned.
+[//]: # (A description of lessons learned.)
+
 ## Lessons Learned
 Overall the most important thing we learned is how to interface with and utilize the GPU. The general process being:
 1. Initialize the GPU library, and set it to use the GPU as a compute device.
@@ -121,7 +130,8 @@ We also learned a few things about the general limitations of the GPU computatio
 And one thing that we all learned is that GPU acceleration is actually pretty accessible: as long as you have a parallelizeable operation and working knowledge of the OpenCL library its very feasible to parallelize computation with the GPU.
 
 ## Results
-###### Your final images, animations, video of your system (whichever is relevant). You can include results that you think show off what you built but that you did not have time to go over on presentation day.
+
+[//]: # (Your final images, animations, video of your system whichever is relevant. You can include results that you think show off what you built but that you did not have time to go over on presentation day.)
 
 The final version of our renderer is capable of rendering scenes with diffuse, mirror, and glass materials with arbitrarily high sample rates and max ray depths (although subject to the GPU watchdog timeout problem that was described earlier), and can do so far faster than a CPU-based renderer for high quality renders.
 
