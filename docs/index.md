@@ -4,6 +4,7 @@
 
 ## Final Report Video Link
 [Click here to see our final video presentation](https://www.youtube.com/watch?v=v59Jgd8jITQ&feature=youtu.be)
+<iframe width="560" height="315" src="https://www.youtube.com/embed/v59Jgd8jITQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## Project Presentation Link
 [Click here to see our project presentation](https://docs.google.com/presentation/d/1ynO1Ty_dc1L0bplnjsn1DCE716DPAUe8XLh9mb8yZ8E/edit?usp=sharing)
