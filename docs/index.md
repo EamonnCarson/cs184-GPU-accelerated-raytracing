@@ -1,4 +1,4 @@
-## Final Project: GPU Accelerated Pathtracing
+# Final Project: GPU Accelerated Pathtracing
 #### Authors: William Sheu, Eric Zhou, Eamonn Carson
 #### CS 184: Computer Graphics and Imaging, Spring 2019
 
@@ -16,10 +16,10 @@
 
 [//]: # (A paragraph summary of the entire project.)
     
-Our project was to accelerate ray-tracing utilizing the GPU to take advantage of the embarassingly parallel computations of individual rays.
+Our project was to accelerate ray-tracing utilizing the GPU to take advantage of the embarrassingly parallel computations of individual rays.
 Each computation of the contribution of each sampled ray to the final image is independent from all others, so we can sample each ray in parallel on the GPU.
-This parallelization is important because it represents an avenue of optimization which can speed up rendering significantly; this allows for reduced computation for commercial raytracing applications, and makes real-time raytracing for videogames and other interactive settings feasible.
-Overall we found that our relatively unoptimized GPU-accelerated raytracing implementation significantly outperforms basic CPU ray-tracing implementations by up to 20x (e.g. project 3-2) on simple scenes without sacrificing render quality. 
+This parallelization is important because it represents an avenue of optimization which can speed up rendering significantly; this allows for reduced computation for commercial ray-tracing applications, and makes real-time ray-tracing for video games and other interactive settings feasible.
+Overall we found that our relatively unoptimized GPU-accelerated ray-tracing implementation significantly outperforms basic CPU ray-tracing implementations by up to 20x (e.g. project 3-2) on simple scenes without sacrificing render quality. 
 
 ## Technical approach
 
@@ -31,22 +31,22 @@ Our implementation for this project does not radically differ from the implement
 
 There are a couple algorithmic differences though. 
 
-First, since kernels cannot communicate between eachother, adaptive sampling was axed, since that would require that we do sequential processing of each sample. Technically since our final product parallelizes by pixel this could be achieved, but our goal was to have one kernel per traced ray which would render this strategy impossible, so we did not implement adaptive sampling.
+First, since kernels cannot communicate between each other, adaptive sampling was axed, since that would require that we do sequential processing of each sample. Technically since our final product parallelizes by pixel this could be achieved, but our goal was to have one kernel per traced ray which would render this strategy impossible, so we did not implement adaptive sampling.
 
-Second, we decided not to use russian roulette because we felt that it would be ineffective. With kernels since they run in parallel (generally with single-instruction-multiple-data SIMD) the runtime of the kernel is going to be the runtime of the longest kernel in the same batch. Russian roulette is effective because it allows you to short-circuit some computations while still keeping your estimator of the amount of light unbiased.
+Second, we decided not to use Russian roulette because we felt that it would be ineffective. With kernels since they run in parallel (generally with single-instruction-multiple-data SIMD) the runtime of the kernel is going to be the runtime of the longest kernel in the same batch. Russian roulette is effective because it allows you to short-circuit some computations while still keeping your estimator of the amount of light unbiased.
 
 In our case since the length of a set of runs is dictated by the length of the longest run, short-circuiting does not reduce the runtime as much. we felt that keeping the branching factor down by not including short-circuiting would probably lead to more efficient code than implementing short-circuiting.
 
 ### Why OpenCL?
 Among the suggested options for this project was implementing GPU-accelerated ray-tracing using the NVIDIA OptiX library; however, we decided that we wanted our ray-tracer to be truly cross platform so instead we decided to implement the ray-tracer in OpenCL. 
 
-Overall we were able to mostly achieve our goal, and got our program to compile properly on Ubuntu and Windows. We did not make this program OSX compatible, becuase we learned after starting that OSX had deprecated OpenCL in favor of Metal and OSX was being obtuse in general.
+Overall we were able to mostly achieve our goal, and got our program to compile properly on Ubuntu and Windows. We did not make this program OSX compatible, because we learned after starting that OSX had deprecated OpenCL in favor of Metal and OSX was being obtuse in general.
 
 ### Overall approach
 
 ![parallelization diagram](images/parallelization_diagram.jpg "A single ray must be traced sequentially, but two different rays can be traced in parallel")
 
-The basic concept that makes GPU ray-tracing a good idea is that ray-tracing is an *embarassingly parallel* task.
+The basic concept that makes GPU ray-tracing a good idea is that ray-tracing is an *embarrassingly parallel* task.
 What this means is that the computation of each ray is independent from the computation of any other ray, which means that we can parallelize the computation.
 With an 8-core CPU this means that you can compute the contributions of 8 rays in parallel, which yields an 8x speedup (ignoring overhead) compared to running the computation naively on a single core.
 However, on a GPU we can have over a hundred "cores" running the same ray-tracing operation, and receive a proportional speedup (again ignoring overhead).
@@ -58,12 +58,12 @@ The only algorithmic difference was that instead of parallelizing the computatio
 
 ### Technical Details
 First, there are a few gritty technical details which we had to deal with.
-In order to use GPU kernels to render the scene you have to transfer scene variables and data-structures over to the GPU's memory, and because of library limitations these datastructures had to be indexible as arrays. This was generally not too much of a hurdle for normal types of objects: lights in the scene, material BSDFs, and object geometries were easily portable.
-However this was a more significant challenge with more specialized datastructures. Particularly we had to completely redesign the datastructure of our bounding volume hierarchy (BVH) so that it was in an array format and could be traversed as an array without recursion.
+In order to use GPU kernels to render the scene you have to transfer scene variables and data-structures over to the GPU's memory, and because of library limitations these data structures had to be indexable as arrays. This was generally not too much of a hurdle for normal types of objects: lights in the scene, material BSDFs, and object geometries were easily portable.
+However this was a more significant challenge with more specialized data structures. Particularly we had to completely redesign the data structure of our bounding volume hierarchy (BVH) so that it was in an array format and could be traversed as an array without recursion.
 
 The general technical implementation consisted of the following steps:
 1. Initialize OpenCL
-2. Transfer scene data (BVH, lights, material bsdfs, camera variables, primitives) to the GPU
+2. Transfer scene data (BVH, lights, material BSDFs, camera variables, primitives) to the GPU
 3. Setup output buffer for the kernels to write to and send that to the GPU
 4. Setup OpenCL commandQueue containing kernel jobs (either pixels or individual rays)
 5. Run kernels from commandQueue
@@ -84,7 +84,7 @@ Note that we have to keep track of running multiplier for the contribution of ea
 
 To elaborate on the construction and access procedures of the BVH, there are two major changes: first, since we only can really transfer arrays we need to 'flatten' our BVH into an array, and second — since kernels are not allowed to perform recursion — we must simulate recursion using a for loop to access elements and perform intersections. 
 As for the array necessity, we just represent the BVH as a flat array of BVH nodes each of which has variables that indicate their children and whether or not they are a leaf node and store in the leaf node an array of primitives. 
-The more annoying aspect is the fact that we cannot use recursion, which means that we have to manually keep track of the 'next' node to go to in the recursion and how to backtrack to the parent node. 
+The more annoying aspect is the fact that we cannot use recursion, which means that we have to manually keep track of the next node to go to in the recursion and how to backtrack to the parent node. 
 
 We solved this by encoding the recursion strategy directly in the BVH tree itself: each BVH node has an exit node (which is its parent's right child (if it is a left child), or its grandparent's right child (if it is a right child)) and an entrance node (which is its left child if it is not a leaf node, and which is equal to its exit node if it is a leaf node). By following the entry node while the ray intersects the current node and following the exit node when it doesn't we get
 pattern we need to properly do an intersection test with the BVH. See our code for more details.
@@ -103,13 +103,13 @@ We were faced with a few problems that stoppered our progress significantly alon
 First, William realized that we couldn't just move the BVH onto the GPU because of the restrictions described before. He was the one who fixed this issue and implemented the flattened BVH so that the project could continue.
 
 Second, we had a nasty bug due to incorrect initialization.
-William while making the prototype rendering script did almost everything correctly first try; however, he made one little syntax error where he forgot to initialize the direct-lighting total vector with zeros. Since OpenCL is a low-level computational library, this naturally meant that this vector was filled with random garbage from memory, and this caused the renders on both William's and Eric's personal machine to just be random colours.
+William while making the prototype rendering script did almost everything correctly first try; however, he made one little syntax error where he forgot to initialize the direct-lighting total vector with zeros. Since OpenCL is a low-level computational library, this naturally meant that this vector was filled with random garbage from memory, and this caused the renders on both William's and Eric's personal machine to just be random colors.
 Meanwhile Eamonn was working on getting the code to compile on the hive machine's outdated versions of CMake and Clang, and once he did he ran the code and miraculously it worked seemingly fine. Apparently for some reason (probably because the hive machines are multi-user machines with proper security measures against reading other people's garbage, or something to that effect) the random garbage on the hive machines was close enough to zero that the program could be run and properly
 debugged. This eventually led to Eamonn finding the syntax error and fixing the issue.
 
-Third, because we just haphazardly placed our code into the project 3-2 framework we realized that the -f flag and rerendering after a render were causing the program to crash. Eric fixed that bug.
+Third, because we just haphazardly placed our code into the project 3-2 framework we realized that the -f flag and re-rendering after a render were causing the program to crash. Eric fixed that bug.
 
-Also in general we ran into some bugs with our implementations (multiple bounces looking horrible, excessive noise, etc); and although this solution isn't scaleable we generally solved the issues by getting one of our partners to independently reimplement the code and then combining the good parts of each.
+Also in general we ran into some bugs with our implementations (multiple bounces looking horrible, excessive noise, etc); and although this solution isn't scalable we generally solved the issues by getting one of our partners to independently re-implement the code and then combining the good parts of each.
 
 [//]: # (A description of lessons learned.)
 
@@ -125,9 +125,9 @@ Overall the most important thing we learned is how to interface with and utilize
 We also learned a few things about the general limitations of the GPU computations in OpenCL:
 1. You can't enqueue new kernel jobs from within a GPU kernel.
 2. You can't use recursion.
-3. You need to have all input datastructures be arrays.
+3. You need to have all input data structures be arrays.
 
-And one thing that we all learned is that GPU acceleration is actually pretty accessible: as long as you have a parallelizeable operation and working knowledge of the OpenCL library its very feasible to parallelize computation with the GPU.
+And one thing that we all learned is that GPU acceleration is actually pretty accessible: as long as you have a parallelize-able operation and working knowledge of the OpenCL library its very feasible to parallelize computation with the GPU.
 
 ## Results
 
@@ -152,19 +152,19 @@ Here are some samples of high quality renders. All scenes are rendered with 2048
 It is clear that our renderer is capable of very high quality, but in addition our renderer can outperform CPU renderers by large amounts depending on the scene.
 
 Below are three charts detailing the performance of our GPU renderer compared to the CPU renderer that we implemented in project 3-2.
-As you can see, when the sample rates combined are low the CPU renderer outperforms the GPU renderer. At low sample rates the overhead of moving datastructures to the GPU and setting up the kernel jobs is high enough that the CPU can outperform the GPU implementation.
+As you can see, when the sample rates combined are low the CPU renderer outperforms the GPU renderer. At low sample rates the overhead of moving data structures to the GPU and setting up the kernel jobs is high enough that the CPU can outperform the GPU implementation.
 However, you can see for any 'decent' sampling rate (at least 16 samples per pixel) the GPU beats out the CPU renderer, since at that point the GPU runs fast enough that the overhead of transferring information to the GPU is worth it.
 
-![Comparison of GPU vs CPU for multiple-bounce raytracing for CBBunny.dae](./images/multibounce_bunny_compare.png)
-![Comparison of GPU vs CPU for multiple-bounce raytracing for CBSpheres.dae](./images/multibounce_sphere_compare.png)
-![Comparison of GPU vs CPU for single-bounce raytracing for CBBunny.dae](./images/unibounce_bunny_compare.png)
+![Comparison of GPU vs CPU for multiple-bounce ray-tracing for CBBunny.dae](./images/multibounce_bunny_compare.png)
+![Comparison of GPU vs CPU for multiple-bounce ray-tracing for CBSpheres.dae](./images/multibounce_sphere_compare.png)
+![Comparison of GPU vs CPU for single-bounce ray-tracing for CBBunny.dae](./images/unibounce_bunny_compare.png)
 
 ## References
 We didn't really reference anything other than the [OpenCL version 1.2 documentation](https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/) and the [implementation of project 3-2](https://cs184.eecs.berkeley.edu/sp19/article/26/assignment-3-2-pathtracer-2).
 
 ## Contributions from each team member
 
-William Sheu wrote or refactored almost all the code in the project. To be specific his contributions were:
+William Sheu wrote or re-factored almost all the code in the project. To be specific his contributions were:
 - Porting entire project 3-2 framework to OpenCL.
 - Implementing pixel-based (1 OpenCL kernel per pixel) zero-bounce and multi-bounce ray-tracing.
 - Implemented mirror, glass, and diffuse materials.
@@ -178,6 +178,6 @@ Eamonn Carson contributed the following:
 
 Eric Zhou contributed the following:
 - Creating milestone video and final video.
-- Runnning benchmarks and compiling the deliverables.
+- Running benchmarks and compiling the deliverables.
 - Getting the program to compile on Windows.
 - Helping debug various issues encountered along the way
