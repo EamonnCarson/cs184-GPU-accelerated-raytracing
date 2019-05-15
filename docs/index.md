@@ -123,7 +123,34 @@ And one thing that we all learned is that GPU acceleration is actually pretty ac
 ## Results
 ###### Your final images, animations, video of your system (whichever is relevant). You can include results that you think show off what you built but that you did not have time to go over on presentation day.
 
+The final version of our renderer is capable of rendering scenes with diffuse, mirror, and glass materials with arbitrarily high sample rates and max ray depths (although subject to the GPU watchdog timeout problem that was described earlier), and can do so far faster than a CPU-based renderer for high quality renders.
+
+Here are some samples of high quality renders. All scenes are rendered with 2048 samples, 4 light samples (number of times each light is sampled during direct light sampling), and a max ray depth of 4:
+
+![High quality diffuse bunny](./images/bunny_2048_4_4.png)
+
+*Caption: Bunny rendered with -s 2048 -l 4 -m 4. This render took 222.3 seconds.*
+
+![High quality mirror dragon](./images/dragon_2048_4_4.png)
+
+*Caption: Dragon rendered with -s 2048 -l 4 -m 4. This render took 253.9 seconds.*
+
+![High quality mirror and glass spheres](./images/spheres_2048_4_4.png)
+
+*Caption: Spheres rendered with -s 2048 -l 4 -m 4. This render took 65.9 seconds.*
+
+It is clear that our renderer is capable of very high quality, but in addition our renderer can outperform CPU renderers by large amounts depending on the scene.
+
+Below are three charts detailing the performance of our GPU renderer compared to the CPU renderer that we implemented in project 3-2.
+As you can see, when the sample rates combined are low the CPU renderer outperforms the GPU renderer. At low sample rates the overhead of moving datastructures to the GPU and setting up the kernel jobs is high enough that the CPU can outperform the GPU implementation.
+However, you can see for any 'decent' sampling rate (at least 16 samples per pixel) the GPU beats out the CPU renderer, since at that point the GPU runs fast enough that the overhead of transferring information to the GPU is worth it.
+
+![Comparison of GPU vs CPU for multiple-bounce raytracing for CBBunny.dae](./images/multibounce_bunny_compare.png)
+![Comparison of GPU vs CPU for multiple-bounce raytracing for CBSpheres.dae](./images/multibounce_sphere_compare.png)
+![Comparison of GPU vs CPU for single-bounce raytracing for CBBunny.dae](./images/unibounce_bunny_compare.png)
+
 ## References
+We didn't really reference anything other than the [OpenCL version 1.2 documentation](https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/) and the [implementation of project 3-2](https://cs184.eecs.berkeley.edu/sp19/article/26/assignment-3-2-pathtracer-2).
 
 ## Contributions from each team member
 
