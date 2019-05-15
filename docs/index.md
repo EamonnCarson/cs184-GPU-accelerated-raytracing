@@ -17,25 +17,25 @@
 [//]: # (A paragraph summary of the entire project.)
     
 Our project was to accelerate ray-tracing utilizing the GPU to take advantage of the embarrassingly parallel computations of individual rays.
-Each computation of the contribution of each sampled ray to the final image is independent from all others, so we can sample each ray in parallel on the GPU.
+Each computation of the contribution of a sampled ray to the final image is independent from the computations concerning any other ray, so we can sample each ray in parallel on the GPU.
 This parallelization is important because it represents an avenue of optimization which can speed up rendering significantly; this allows for reduced computation for commercial ray-tracing applications, and makes real-time ray-tracing for video games and other interactive settings feasible.
-Overall we found that our relatively unoptimized GPU-accelerated ray-tracing implementation significantly outperforms basic CPU ray-tracing implementations by up to 20x (e.g. project 3-2) on simple scenes without sacrificing render quality. 
+Our implementation strategy largely was the same as a CPU renderer, aside from some techinical restrictions due to computing on the GPU and the scale of parallelization.
+Overall we found that our relatively unoptimized GPU-accelerated ray-tracing implementation significantly outperforms basic CPU ray-tracing (e.g. project 3-2) implementations by up to 30x on simple scenes without sacrificing render quality.
 
 ## Technical approach
 
 [//]: # (A 1-2 page summary of your technical approach, techniques used, algorithms implemented, etc. use references to papers or other resources for further detail. Highlight how your approach varied from the references used did you implement a subset, or did you change or enhance anything, the unique decisions you made and why.) 
 
 ### A note about resources
-The instructions for this section say to go over what resources and papers we referenced in order to build this and how we differed from their strategies. Overall we did not reference any real resources other than project 3-2 and the OpenCL documentation.
+The instructions for this section say to go over what resources and papers we referenced in order to build this and how we differed from their strategies. Overall we did not reference any resources other than project 3-2 and the OpenCL documentation.
 Our implementation for this project does not radically differ from the implementation of project 3-2 (the process and architecture are generally the same, just implemented using kernels and OpenCL).
 
 There are a couple algorithmic differences though. 
 
 First, since kernels cannot communicate between each other, adaptive sampling was axed, since that would require that we do sequential processing of each sample. Technically since our final product parallelizes by pixel this could be achieved, but our goal was to have one kernel per traced ray which would render this strategy impossible, so we did not implement adaptive sampling.
 
-Second, we decided not to use Russian roulette because we felt that it would be ineffective. With kernels since they run in parallel (generally with single-instruction-multiple-data SIMD) the runtime of the kernel is going to be the runtime of the longest kernel in the same batch. Russian roulette is effective because it allows you to short-circuit some computations while still keeping your estimator of the amount of light unbiased.
-
-In our case since the length of a set of runs is dictated by the length of the longest run, short-circuiting does not reduce the runtime as much. we felt that keeping the branching factor down by not including short-circuiting would probably lead to more efficient code than implementing short-circuiting.
+Second, we decided not to use Russian roulette because we felt that it would be ineffective. Since kernels run in parallel (generally with single-instruction-multiple-data SIMD) the runtime of the kernel is going to be the runtime of the longest kernel in the same batch. Russian roulette is effective because it allows you to short-circuit some computations while still keeping your estimator of the amount of light unbiased.
+In our case since the length of a set of runs is dictated by the length of the longest run, short-circuiting does not reduce the runtime as much. Therefore, we felt that keeping the branching factor down by not including short-circuiting would probably lead to more efficient code than implementing short-circuiting.
 
 ### Why OpenCL?
 Among the suggested options for this project was implementing GPU-accelerated ray-tracing using the NVIDIA OptiX library; however, we decided that we wanted our ray-tracer to be truly cross platform so instead we decided to implement the ray-tracer in OpenCL. 
@@ -46,8 +46,8 @@ Overall we were able to mostly achieve our goal, and got our program to compile 
 
 ![parallelization diagram](images/parallelization_diagram.jpg "A single ray must be traced sequentially, but two different rays can be traced in parallel")
 
-The basic concept that makes GPU ray-tracing a good idea is that ray-tracing is an *embarrassingly parallel* task.
-What this means is that the computation of each ray is independent from the computation of any other ray, which means that we can parallelize the computation.
+The basic concept that makes GPU ray-tracing a good idea is that ray-tracing is an [embarrassingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) task.
+What this means is that the computation of each ray is independent from the computation of any other ray, which means that we can parallelize the computation easily by just having one ray per GPU kernel.
 With an 8-core CPU this means that you can compute the contributions of 8 rays in parallel, which yields an 8x speedup (ignoring overhead) compared to running the computation naively on a single core.
 However, on a GPU we can have over a hundred "cores" running the same ray-tracing operation, and receive a proportional speedup (again ignoring overhead).
 
@@ -59,23 +59,23 @@ The only algorithmic difference was that instead of parallelizing the computatio
 ### Technical Details
 First, there are a few gritty technical details which we had to deal with.
 In order to use GPU kernels to render the scene you have to transfer scene variables and data-structures over to the GPU's memory, and because of library limitations these data structures had to be indexable as arrays. This was generally not too much of a hurdle for normal types of objects: lights in the scene, material BSDFs, and object geometries were easily portable.
-However this was a more significant challenge with more specialized data structures. Particularly we had to completely redesign the data structure of our bounding volume hierarchy (BVH) so that it was in an array format and could be traversed as an array without recursion.
+However this was a more significant challenge with more specialized data structures. Particularly we had to completely reformat the data structure of our bounding volume hierarchy (BVH) so that it was in an array format and could be traversed as an array without recursion.
 
 The general technical implementation consisted of the following steps:
-1. Initialize OpenCL
-2. Transfer scene data (BVH, lights, material BSDFs, camera variables, primitives) to the GPU
-3. Setup output buffer for the kernels to write to and send that to the GPU
-4. Setup OpenCL commandQueue containing kernel jobs (either pixels or individual rays)
-5. Run kernels from commandQueue
-6. Read output out of the output buffer and write them to the image
-7. Output image
+1. Initialize OpenCL.
+2. Transfer scene data (BVH, lights, material BSDFs, camera variables, primitives) to the GPU.
+3. Setup output buffer for the kernels to write to and send that to the GPU.
+4. Setup OpenCL commandQueue containing kernel jobs (either pixels or individual rays).
+5. Run kernels from commandQueue.
+6. Read output out of the output buffer and write them to the image.
+7. Output image.
 
 Within each kernel's process, we follow this process for each ray sample:
 1. Generate a number unique to this kernel using the x, y, and sample number to be used as a seed for this kernel. Set this to be the random state.
-2. Generate a random ray out of the camera that belongs to this sample's pixel
+2. Generate a random ray out of the camera that belongs to this sample's pixel.
 3. For each bounce:
-    1. Intersect the ray with the BVH, finding the point at which it intersects the scene
-    2. Calculate the global illumination at that point using direct lighting (looping through each of the lights in the scene)
+    1. Intersect the ray with the BVH, finding the point at which it intersects the scene.
+    2. Calculate the global illumination at that point using direct lighting (looping through each of the lights in the scene).
     3. Calculate a new bounce direction using the BSDF of the material at your intersection point
     4. Simulate the new bounce in the next iteration.
 4. Return the total illumination contributed by that ray by writing it into the output buffer
@@ -87,7 +87,7 @@ As for the array necessity, we just represent the BVH as a flat array of BVH nod
 The more annoying aspect is the fact that we cannot use recursion, which means that we have to manually keep track of the next node to go to in the recursion and how to backtrack to the parent node. 
 
 We solved this by encoding the recursion strategy directly in the BVH tree itself: each BVH node has an exit node (which is its parent's right child (if it is a left child), or its grandparent's right child (if it is a right child)) and an entrance node (which is its left child if it is not a leaf node, and which is equal to its exit node if it is a leaf node). By following the entry node while the ray intersects the current node and following the exit node when it doesn't we get
-pattern we need to properly do an intersection test with the BVH. See our code for more details.
+pattern we need to properly do an intersection test with the BVH. See our code (src/bvh.cpp and src/kernel/intersect.h) for more details.
 
 ### Limitations
 
